@@ -1,155 +1,384 @@
-# SERA — Autonomous AI Commerce Platform
+# SERA — Autonomous Commerce Operating System
 
 <p align="center">
-  <img src="public/sera-logo.png" alt="SERA Logo" width="120" />
+  <img src="public/sera-logo.png" width="140" alt="SERA Logo" />
+</p>
+
+<h3 align="center">
+Build, Manage, and Grow a Business Through Conversation
+</h3>
+
+<p align="center">
+Powered by Gemini 2.5 Pro · Gemini 2.5 Flash · Imagen 3 · Veo · Google ADK · MongoDB MCP · Cloud Run
 </p>
 
 <p align="center">
-  <b>Store Creation & Autonomous Commerce Agent Platform</b><br/>
-  Powered by Google Gemini AI · MongoDB Atlas · Google ADK
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Google_Gemini-2.0_Flash-4285F4?logo=google&logoColor=white" />
-  <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white" />
-  <img src="https://img.shields.io/badge/Google_ADK-Agent_Dev_Kit-34A853?logo=google&logoColor=white" />
-  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black" />
+🏆 Built for Google Cloud Hackathon 2026
 </p>
 
 ---
 
-## 🚀 What is SERA?
+# The Problem
 
-**SERA** is an autonomous AI commerce platform that lets anyone create, manage, and analyze a fully functional digital storefront through natural language conversation. The AI agent handles everything — from store design to product strategy — while the seller simply talks.
+Starting an online business is still too complicated.
 
-> *"You describe. SERA builds. AI sells."*
+Entrepreneurs often need to learn and manage multiple platforms for:
+
+* Store creation
+* Branding
+* Product management
+* Analytics
+* Marketing
+* Content production
+* Customer engagement
+
+While AI assistants can provide suggestions, they rarely execute real business workflows.
+
+As a result, merchants spend more time managing tools than growing their business.
 
 ---
 
-## 🎯 Key Capabilities
+# Our Vision
 
-| Feature | Description |
-|---|---|
-| 🏪 **AI Store Builder** | Generate a complete storefront (products, theme, branding, philosophy) from a single prompt |
-| 📊 **MongoDB Analytics via MCP** | AI agent reads live store data from MongoDB Atlas using Model Context Protocol to deliver real revenue insights |
-| 🎯 **Marketing Advisor** | AI suggests campaigns, video banners, and product positioning strategies |
-| 🛍️ **Buyer Discovery Feed** | Buyers explore AI-created stores and chat with an AI assistant to find the perfect product |
-| 🤖 **Autonomous Agent Loop** | The AI agent plans, executes, validates, and reports — no human micromanagement needed |
+We believe anyone should be able to start and operate a business simply by describing what they want.
+
+Instead of navigating complex software, users should be able to say:
+
+> "Create a coffee brand for students."
+
+or
+
+> "Analyze my store and tell me how to increase sales."
+
+and have an autonomous system handle the rest.
 
 ---
 
-## 🏗️ System Architecture
+# What is SERA?
 
+**SERA (Smart Ecommerce Reasoning Agent)** is an AI-native commerce operating system that enables merchants to create, operate, analyze, and grow digital businesses through natural language.
+
+SERA combines reasoning, analytics, content generation, and autonomous workflows into a single commerce platform.
+
+> "You describe. SERA builds. AI sells."
+
+---
+
+# Two-Sided Commerce Platform
+
+SERA consists of two connected experiences.
+
+## 🏪 Seller Mode
+
+An AI workspace for merchants.
+
+Merchants can:
+
+* Create stores from a conversation
+* Generate products automatically
+* Build branding and identity
+* Analyze performance
+* Create marketing campaigns
+* Generate images and videos
+* Receive business recommendations
+
+The merchant focuses on goals.
+
+SERA handles execution.
+
+---
+
+## 🛍️ Buyer Mode
+
+An AI-powered shopping experience.
+
+Buyers can:
+
+* Discover stores
+* Explore products
+* Search naturally using conversation
+* Receive product recommendations
+* Interact with an AI shopping assistant
+
+Instead of searching through filters, buyers simply describe what they need.
+
+---
+
+# Autonomous Multi-Agent Architecture
+
+SERA is powered by multiple specialized agents built with Google Agent Development Kit (ADK).
+
+Each agent is responsible for a specific commerce function.
+
+| Agent                   | Responsibility                                                            |
+| ----------------------- | ------------------------------------------------------------------------- |
+| Store Architect Agent   | Creates storefronts, products, branding, and business identity            |
+| Commerce Strategy Agent | Business planning and growth recommendations                              |
+| Analytics Agent         | Revenue analysis and operational intelligence                             |
+| Marketing Agent         | Campaign generation and positioning strategies                            |
+| Image Generation Agent  | Creates banners, product visuals, and promotional graphics using Imagen 3 |
+| Video Generation Agent  | Produces marketing videos using Veo                                       |
+| Buyer Assistant Agent   | Conversational shopping and product discovery                             |
+
+This architecture enables SERA to operate as an autonomous commerce system rather than a traditional chatbot.
+
+---
+
+# Intelligent AI Routing
+
+Different business tasks require different AI capabilities.
+
+SERA dynamically routes workloads to specialized models.
+
+## 🧠 Gemini 2.5 Pro
+
+Used for:
+
+* Store creation
+* Product generation
+* Strategic planning
+* Deep reasoning
+* Business analysis
+* Agent orchestration
+
+---
+
+## ⚡ Gemini 2.5 Flash
+
+Used for:
+
+* Buyer conversations
+* Product discovery
+* Fast interactions
+* Real-time assistance
+
+---
+
+## 🖼️ Imagen 3
+
+Used for:
+
+* Product images
+* Store branding
+* Marketing graphics
+* Promotional assets
+* Hero banners
+
+---
+
+## 🎬 Veo
+
+Used for:
+
+* Promotional videos
+* Product showcases
+* Social media reels
+* Campaign content
+* Marketing videos
+
+---
+
+# Commerce Intelligence with MongoDB MCP
+
+One of SERA's core innovations is its integration with MongoDB Atlas through the Model Context Protocol (MCP).
+
+Instead of relying on static context, SERA can access real business data directly.
+
+Supported operations include:
+
+* find
+* aggregate
+* insertOne
+* updateOne
+
+This enables agents to analyze:
+
+* Revenue
+* Orders
+* Product performance
+* Customer activity
+* Store growth trends
+
+The result is AI-generated business intelligence based on live operational data.
+
+---
+
+# System Architecture
+
+```text
+┌──────────────────────────────────────┐
+│           React Frontend             │
+│                                      │
+│  Seller Mode      +     Buyer Mode   │
+└───────────────────┬──────────────────┘
+                    │
+                    ▼
+
+┌──────────────────────────────────────┐
+│          Node.js Backend             │
+│          API Gateway Layer           │
+└───────────────────┬──────────────────┘
+                    │
+                    ▼
+
+┌──────────────────────────────────────┐
+│      Google ADK Agent Runtime        │
+│             (Python)                 │
+└───────┬────────────┬────────────┬────┘
+        │            │            │
+        ▼            ▼            ▼
+
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│ Gemini 2.5  │ │ Imagen 3    │ │ Veo         │
+│ Pro / Flash │ │ Image Gen   │ │ Video Gen   │
+└─────────────┘ └─────────────┘ └─────────────┘
+
+        │
+        ▼
+
+┌──────────────────────────────────────┐
+│      MongoDB Atlas + MCP Server      │
+└──────────────────────────────────────┘
 ```
-┌─────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│ React Frontend  │────▶│  Node.js Backend  │────▶│  MongoDB Atlas   │
-│ (Vite)          │     │  (Express)        │◀────│  (via MCP)       │
-│ Port: 5173      │     │  Port: 3001       │     │                  │
-└────────┬────────┘     └──────────────────┘     └──────────────────┘
-         │
-         │              ┌──────────────────┐
-         └─────────────▶│  Python Agent    │
-                        │  (Google ADK)    │
-                        │  Port: 8000      │
-                        └──────────────────┘
-```
-
-**How the MCP connection works:**
-1. The seller clicks "Analyze Store"
-2. The React frontend sends a request to the Node.js backend
-3. Node.js spawns a `mongodb-mcp-server` process via `StdioClientTransport`
-4. The AI agent calls MCP tools (`find`, `aggregate`, `insertOne`) to read/write MongoDB Atlas directly
-5. Gemini AI synthesizes the raw data into a structured analytics report
 
 ---
 
-## 🛠️ Tech Stack
+# Google Cloud Implementation
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18 + Vite |
-| Styling | Vanilla CSS with custom design system |
-| Backend | Node.js + Express |
-| AI Agent | Python + Google ADK (Agent Development Kit) |
-| AI Model | Google Gemini 2.0 Flash |
-| Database | MongoDB Atlas |
-| DB Integration | MongoDB MCP Server (Model Context Protocol) |
-| Deployment | Docker + Google Cloud Run (optional) |
+SERA leverages Google Cloud technologies to power autonomous commerce workflows.
+
+### Google Cloud Services
+
+* Vertex AI
+* Gemini 2.5 Pro
+* Gemini 2.5 Flash
+* Imagen 3
+* Veo
+* Google Agent Development Kit (ADK)
+* Cloud Run
+* Cloud Logging
+* Cloud Monitoring
+
+### Cloud Deployment
+
+Production services are deployed on Cloud Run.
+
+Cloud Run hosts:
+
+* Node.js Backend
+* Python Agent Runtime
+* Agent APIs
+
+This architecture enables scalable and serverless AI execution.
 
 ---
 
-## 📦 Getting Started
+# Technology Stack
 
-### Prerequisites
-- Node.js >= 18
-- Python >= 3.10
-- MongoDB Atlas account (free tier works)
-- Google Cloud project with Gemini API or Vertex AI enabled
+| Layer                  | Technology          |
+| ---------------------- | ------------------- |
+| Frontend               | React + Vite        |
+| Backend                | Node.js + Express   |
+| Agent Runtime          | Python + Google ADK |
+| Strategic Reasoning    | Gemini 2.5 Pro      |
+| Realtime Commerce Chat | Gemini 2.5 Flash    |
+| Image Generation       | Imagen 3            |
+| Video Generation       | Veo                 |
+| Database               | MongoDB Atlas       |
+| AI Data Access         | MongoDB MCP         |
+| Deployment             | Google Cloud Run    |
 
-### 1. Clone the Repository
+---
+
+# Potential Impact
+
+SERA lowers the barrier to entrepreneurship.
+
+By transforming commerce operations into natural language interactions, SERA empowers:
+
+* Small businesses
+* Independent creators
+* Students
+* First-time entrepreneurs
+* Emerging market sellers
+
+A single individual can launch, manage, and grow a digital business without requiring technical expertise.
+
+Our long-term vision is to democratize commerce through autonomous AI.
+
+---
+
+# Screenshots
+
+### Seller Workspace
+
+*(Add Screenshot)*
+
+### AI Store Creation
+
+*(Add Screenshot)*
+
+### Analytics Dashboard
+
+*(Add Screenshot)*
+
+### Buyer Discovery Feed
+
+*(Add Screenshot)*
+
+### Imagen 3 Content Generation
+
+*(Add Screenshot)*
+
+### Veo Video Generation
+
+*(Add Screenshot)*
+
+---
+
+# Demo Video
+
+YouTube Demo:
+
+*(Add Demo Link)*
+
+---
+
+# Getting Started
+
+## Clone Repository
+
 ```bash
-git clone https://github.com/yourusername/sera-hackathon.git
-cd sera-hackathon
+git clone https://github.com/yourusername/sera-commerce-agent.git
+cd sera-commerce-agent
 ```
 
-### 2. Set Up the Frontend
+## Frontend
+
 ```bash
 npm install
-cp .env.example .env
-# Fill in VITE_BACKEND_URL and VITE_ADK_URL
+npm run dev
 ```
 
-### 3. Set Up the Node.js Backend
+## Backend
+
 ```bash
 cd server
 npm install
-cp .env.example .env
-# Fill in MONGODB_URI (from MongoDB Atlas) and PORT
+node index.js
 ```
 
-### 4. Set Up the Python Agent
+## Agent Runtime
+
 ```bash
 cd sera-agent-python
 pip install -r requirements.txt
-cp .env.example .env
-# Fill in GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 5. Run All Services
-```bash
-# Terminal 1 — Frontend
-npm run dev
+## Environment Variables
 
-# Terminal 2 — Node.js Backend
-cd server && node index.js
-
-# Terminal 3 — Python Agent
-cd sera-agent-python && uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Open your browser at `http://localhost:5173`
-
----
-
-## ✨ Feature Highlights
-
-### 🏪 Seller Mode — AI Store Builder
-- **Conversational store creation**: describe your brand in plain text, the AI generates the full schema
-- **Live preview**: see your store take shape in real time as the agent builds it
-- **Product management**: AI suggests product names, descriptions, pricing, and promo tags
-- **Video marketing**: upload or generate storefront banner videos (16:9) and promo reels (9:16)
-- **Store Analytics**: the AI agent connects to MongoDB Atlas via MCP and delivers a comprehensive report — revenue trends, top products, conversion rates, and actionable recommendations
-
-### 🛍️ Buyer Mode — AI Discovery
-- Browse a curated feed of AI-generated storefronts
-- Use the AI buyer assistant to find products by natural language query
-- Filter by category, follow stores, and add items to cart
-
----
-
-## 🔑 Environment Variables
-
-Each service requires its own `.env` file. Refer to the `.env.example` file in each directory for the required variables.
+Each service requires a `.env` file. Copy the `.env.example` in each directory and fill in the values.
 
 | File | Key Variables |
 |---|---|
@@ -159,12 +388,21 @@ Each service requires its own `.env` file. Refer to the `.env.example` file in e
 
 ---
 
-## 🏆 Built For
+# Future Vision
 
-**Google Cloud Hackathon 2026** — Category: AI-Powered Autonomous Commerce
+SERA is evolving toward a fully autonomous commerce operating system.
+
+Future capabilities include:
+
+* Autonomous marketing execution
+* Multi-channel commerce automation
+* Marketplace integrations
+* Social commerce workflows
+* Advanced multi-agent collaboration
+* AI-powered business operations at scale
 
 ---
 
-## 📄 License
+# License
 
 MIT License
