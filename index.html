@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src * data:; connect-src * ws: wss:;">
+<title>SERA — Agent Ecommerce OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-start: #F7F3EF;
+    --bg-mid:   #FAF8F5;
+    --bg-end:   #F2EDE8;
+    --text:     #1C1917;
+    --muted:    #6B6560;
+    --accent:   #3F53E6;
+    --accent-lt:#5B6EEF;
+    --white:    #FFFFFF;
+    --border:   rgba(0,0,0,0.07);
+    --shadow-sm: 0 2px 12px rgba(0,0,0,0.06);
+    --shadow-md: 0 8px 40px rgba(0,0,0,0.09);
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: 'DM Sans', sans-serif;
+    background: radial-gradient(ellipse 120% 80% at 50% 0%, #F0EAE3 0%, #F7F3EF 40%, #FAF8F5 100%);
+    color: var(--text);
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: radial-gradient(circle, rgba(0,0,0,0.055) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    width: 700px; height: 400px;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -60%);
+    background: radial-gradient(ellipse, rgba(181,98,59,0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+    animation: glowPulse 8s ease-in-out infinite;
+  }
+
+  @keyframes glowPulse {
+    0%, 100% { opacity: 0.6; transform: translate(-50%, -60%) scale(1); }
+    50% { opacity: 1; transform: translate(-50%, -62%) scale(1.04); }
+  }
+
+  .scene {
+    position: relative;
+    width: 100vw; height: 100vh;
+    display: flex; flex-direction: column;
+    z-index: 1;
+    animation: sceneDrift 20s ease-in-out infinite alternate;
+    transform-origin: center center;
+  }
+
+  @keyframes sceneDrift {
+    0%   { transform: scale(1) translateY(0px); }
+    100% { transform: scale(1.015) translateY(-6px); }
+  }
+
+
+
+  .hero {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 0 20px;
+    margin-top: -30px;
+    gap: 0;
+  }
+
+  .pill {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 100px;
+    padding: 7px 18px;
+    font-size: 11px; letter-spacing: 0.12em;
+    color: var(--muted);
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(10px);
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: fadeDown 0.8s cubic-bezier(0.22,1,0.36,1) 0.7s forwards;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  }
+
+  .pill-logo {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    object-fit: cover;
+    animation: pulse 2.5s ease-in-out 1.5s infinite;
+    box-shadow: 0 2px 8px rgba(63,83,230,0.45);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.65; transform: scale(0.85); }
+  }
+
+  .headline {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 400;
+    font-size: clamp(48px, 6.5vw, 84px);
+    line-height: 1.14;
+    text-align: center;
+    color: var(--text);
+    margin-bottom: 22px;
+  }
+
+  .word {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.6s cubic-bezier(0.22,1,0.36,1), transform 0.6s cubic-bezier(0.22,1,0.36,1);
+    margin: 0 5px;
+  }
+  .word.visible { opacity: 1; transform: translateY(0); }
+
+  .rot-phrase {
+    display: inline-block;
+    color: var(--accent);
+    font-style: italic;
+    opacity: 0;
+    margin-left: 3px;
+    transition: opacity 0.65s ease;
+  }
+
+  .sub {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(14px, 1.5vw, 17px);
+    font-weight: 300;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.7;
+    max-width: 500px;
+    opacity: 0;
+    animation: fadeUp 1s cubic-bezier(0.22,1,0.36,1) 3.2s forwards;
+    margin-bottom: 40px;
+    letter-spacing: 0.01em;
+  }
+
+  .panel-wrap {
+    width: 100%;
+    max-width: 720px;
+    opacity: 0;
+    transform: translateY(24px);
+    animation: fadeUp 0.9s cubic-bezier(0.22,1,0.36,1) 3.8s forwards;
+  }
+
+  .panel {
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.9);
+    border-radius: 20px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow-md), 0 1px 0 rgba(255,255,255,0.8) inset;
+    display: flex; align-items: center; gap: 12px;
+  }
+
+  .typing-area {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text);
+    min-height: 20px;
+    letter-spacing: 0.01em;
+    display: flex; align-items: center; gap: 1px;
+    flex: 1;
+    min-width: 0;
+  }
+  .typed-text {
+    transition: opacity 0.5s ease;
+    opacity: 1;
+  }
+
+  .cursor {
+    display: inline-block;
+    width: 2px; height: 16px;
+    background: var(--accent);
+    border-radius: 1px;
+    animation: blink 1.1s step-end infinite;
+    margin-left: 1px;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+  .panel-icons {
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0;
+    opacity: 0;
+    animation: chipIn 0.5s cubic-bezier(0.22,1,0.36,1) 4.1s forwards;
+  }
+
+  /* ── CTA Button — primary action ── */
+  .cta-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    box-shadow: 0 4px 16px rgba(63,83,230,0.35);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .cta-btn:hover {
+    transform: scale(1.03) translateZ(0);
+    box-shadow: 0 6px 24px rgba(63,83,230,0.5);
+    background: var(--accent-lt);
+  }
+  .cta-btn:active { transform: scale(0.98) translateZ(0); }
+
+  .cta-btn svg { flex-shrink: 0; }
+
+  /* Loading state */
+  .cta-btn.loading {
+    opacity: 0.75;
+    cursor: wait;
+    pointer-events: none;
+  }
+
+
+
+  @keyframes chipIn {
+    from { opacity: 0; transform: scale(0.88) translateY(4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Tech Stack Footer */
+  .tech-stack {
+    margin-top: 54px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    opacity: 0;
+    animation: fadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 4.6s forwards;
+  }
+  .powered-by {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.3em;
+    color: var(--accent); text-transform: uppercase;
+    margin-bottom: 4px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .powered-by::before, .powered-by::after {
+    content: ''; width: 28px; height: 1px;
+    background: currentColor; opacity: 0.35;
+  }
+  .tech-logos {
+    display: flex; align-items: center; gap: 32px;
+    flex-wrap: wrap; justify-content: center;
+    margin-top: 10px;
+  }
+  .tech-badge {
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), filter 0.3s;
+    filter: opacity(0.75);
+    cursor: default;
+  }
+  .tech-badge:hover {
+    transform: translateY(-3px) scale(1.04);
+    filter: opacity(1) drop-shadow(0 6px 20px rgba(181,98,59,0.2));
+  }
+  .tech-badge img {
+    height: 25px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+  }
+
+  /* Page transition overlay */
+  .transition-overlay {
+    position: fixed; inset: 0;
+    background: #F7F3EF;
+    z-index: 999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  .transition-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+</style>
+</head>
+<body>
+
+<div class="transition-overlay" id="overlay"></div>
+
+<div class="scene">
+
+
+  <div class="hero">
+    <div class="pill">
+      <img class="pill-logo" src="/sera-logo.png" alt="SERA Logo" />
+      SERA AGENT ECOMMERCE OS
+    </div>
+
+    <h1 class="headline" id="headline"></h1>
+
+    <p class="sub">
+      Plan, analyze, and execute your e-commerce<br>
+      with AI agents that truly understand your business.
+    </p>
+
+    <div class="panel-wrap">
+      <div class="panel">
+        <div class="typing-area">
+          <span class="typed-text" id="typedText"></span>
+          <span id="showPlaceholder" style="color:rgba(0,0,0,0.3);font-weight:300;">
+            What would you like to build today?
+          </span>
+          <span class="cursor"></span>
+        </div>
+        <div class="panel-icons">
+          <!-- Try Demo CTA -->
+          <button class="cta-btn" id="demoBtn" onclick="handleTryDemo()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            Try Demo
+          </button>
+        </div>
+    </div>
+
+    <!-- Tech Stack Footer -->
+    <div class="tech-stack">
+      <span class="powered-by">POWERED BY</span>
+      <div class="tech-logos">
+        <div class="tech-badge" title="Google Cloud"><img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg" alt="Google Cloud" /></div>
+        <div class="tech-badge" title="Gemini"><img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg" alt="Gemini" /></div>
+        <div class="tech-badge" title="MongoDB"><img src="https://webimages.mongodb.com/_com_assets/cms/kuyjf3vea2hg34taa-horizontal_default_slate_blue.svg" alt="MongoDB" /></div>
+        <div class="tech-badge" title="Firebase"><img src="https://upload.wikimedia.org/wikipedia/commons/3/37/Firebase_Logo.svg" alt="Firebase" /></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const BACKEND_URL = 'http://localhost:3001'
+
+  // ── Guest Session ──
+  async function initGuestSession() {
+    const existing = localStorage.getItem('sera_session')
+    if (existing) {
+      const session = JSON.parse(existing)
+      if (new Date() < new Date(session.expires_at)) {
+        return session
+      }
+    }
+    const res = await fetch(`${BACKEND_URL}/api/guest/session`, {
+      method: 'POST'
+    })
+    const session = await res.json()
+    localStorage.setItem('sera_session', JSON.stringify(session))
+    return session
+  }
+
+  // ── Try Demo Handler ──
+  async function handleTryDemo() {
+    const btn = document.getElementById('demoBtn')
+    const overlay = document.getElementById('overlay')
+
+    btn.classList.add('loading')
+    btn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83
+                 M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+      </svg>
+      Starting...
+    `
+
+    try {
+      await initGuestSession()
+      overlay.classList.add('active')
+      setTimeout(() => {
+        window.location.href = '/seller.html'
+      }, 500)
+    } catch (err) {
+      console.error('Session error:', err)
+      btn.classList.remove('loading')
+      btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        Try Demo
+      `
+    }
+  }
+
+  // ── Headline animation ──
+  const headlineEl = document.getElementById('headline')
+
+  const staticWords = [
+    { text: 'Your', delay: 1100 },
+    { text: 'AI',   delay: 1380 },
+    { text: 'team', delay: 1660 },
+  ]
+
+  staticWords.forEach(w => {
+    const span = document.createElement('span')
+    span.className = 'word'
+    span.textContent = w.text
+    headlineEl.appendChild(span)
+    setTimeout(() => span.classList.add('visible'), w.delay)
+  })
+
+  headlineEl.appendChild(document.createElement('br'))
+
+  const forSpan = document.createElement('span')
+  forSpan.className = 'word'
+  forSpan.textContent = 'for'
+  headlineEl.appendChild(forSpan)
+  setTimeout(() => forSpan.classList.add('visible'), 1940)
+
+  const rotEl = document.createElement('span')
+  rotEl.className = 'rot-phrase'
+  rotEl.id = 'rotPhrase'
+  rotEl.textContent = 'e-commerce execution'
+  headlineEl.appendChild(rotEl)
+  setTimeout(() => { rotEl.style.opacity = '1' }, 2300)
+
+  const phrases = [
+    'e-commerce execution',
+    'autonomous commerce',
+    'market intelligence',
+    'campaign operations',
+    'storefront automation',
+  ]
+  let pIdx = 0
+
+  function rotatePhrase() {
+    rotEl.style.opacity = '0'
+    setTimeout(() => {
+      pIdx = (pIdx + 1) % phrases.length
+      rotEl.textContent = phrases[pIdx]
+      rotEl.style.opacity = '1'
+    }, 650)
+  }
+
+  setTimeout(() => {
+    rotatePhrase()
+    setInterval(rotatePhrase, 3000)
+  }, 5800)
+
+  // ── Typing animation ──
+  const prompts = [
+    'Build skincare store for Gen Z',
+    'Create Ramadan flash sale campaign',
+    'Analyze product performance trends',
+    'Generate marketing strategy',
+    'Boost low-performing products',
+  ]
+
+  const typedEl = document.getElementById('typedText')
+  const placeholder = document.getElementById('showPlaceholder')
+  let promptIndex = 0
+  let charIndex = 0
+
+  const TYPE_SPEED    = 60
+  const PAUSE_AFTER   = 2200
+  const FADE_DURATION = 500
+  const PAUSE_BEFORE  = 300
+
+  function typeLoop() {
+    const current = prompts[promptIndex]
+    charIndex++
+    typedEl.textContent = current.slice(0, charIndex)
+    placeholder.style.display = 'none'
+
+    if (charIndex === current.length) {
+      setTimeout(() => {
+        typedEl.style.opacity = '0'
+        setTimeout(() => {
+          charIndex = 0
+          promptIndex = (promptIndex + 1) % prompts.length
+          typedEl.textContent = ''
+          typedEl.style.opacity = '1'
+          setTimeout(typeLoop, PAUSE_BEFORE)
+        }, FADE_DURATION)
+      }, PAUSE_AFTER)
+      return
+    }
+
+    const speed = TYPE_SPEED + (Math.random() * 28 - 14)
+    setTimeout(typeLoop, speed)
+  }
+
+  setTimeout(typeLoop, 4600)
+</script>
+
+</body>
+</html>

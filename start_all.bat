@@ -1,0 +1,13 @@
+@echo off
+echo Starting SERA Hackathon Servers...
+
+echo Starting Vite UI...
+start cmd /k "npm run dev"
+
+echo Starting Node Server...
+start cmd /k "cd server && node index.js"
+
+echo Starting Python Agent...
+start cmd /k "cd sera-agent-python && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+
+echo All servers are booting up in separate windows!
