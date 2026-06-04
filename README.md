@@ -312,27 +312,27 @@ Our long-term vision is to democratize commerce through autonomous AI.
 
 ### Seller Workspace
 
-*(Add Screenshot)*
+![Seller Workspace](public/Screenshot%20Seller%20Workspace.png)
 
 ### AI Store Creation
 
-*(Add Screenshot)*
+![AI Store Creation](public/Screenshot%20AI%20Store%20Creation.png)
 
 ### Analytics Dashboard
 
-*(Add Screenshot)*
+![Analytics Dashboard](public/Screenshot%20Analytics%20Dashboard.png)
 
 ### Buyer Discovery Feed
 
-*(Add Screenshot)*
+![Buyer Discovery Feed](public/Screenshot%20Buyer%20Discovery%20Feed.png)
 
 ### Imagen 3 Content Generation
 
-*(Add Screenshot)*
+![Imagen 3 Content Generation](public/Screenshot%20Imagen%203%20Content%20Generation.png)
 
 ### Veo Video Generation
 
-*(Add Screenshot)*
+![Veo Video Generation](public/veo%20video%20landscap%20generation.png)
 
 ---
 

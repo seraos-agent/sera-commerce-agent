@@ -168,12 +168,44 @@
 .sera-chat h4, .sera-chat.markdown-body h4 { font-size: 1em !important; font-weight: normal !important;
   color: inherit !important; margin-top: 6px !important; margin-bottom: 4px !important; -webkit-font-smoothing: antialiased !important; }
 
+/* Paragraph spacing — key for readability */
+.sera-chat p, .sera-chat.markdown-body p {
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+  line-height: 1.7 !important;
+}
+.sera-chat p:last-child, .sera-chat.markdown-body p:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* List spacing */
+.sera-chat ul, .sera-chat ol,
+.sera-chat.markdown-body ul, .sera-chat.markdown-body ol {
+  padding-left: 18px !important;
+  margin-top: 6px !important;
+  margin-bottom: 10px !important;
+}
+.sera-chat li, .sera-chat.markdown-body li {
+  margin-bottom: 6px !important;
+  line-height: 1.6 !important;
+}
+.sera-chat li:last-child, .sera-chat.markdown-body li:last-child {
+  margin-bottom: 0 !important;
+}
+
 /* Fix blurry bold text in chat */
 .sera-chat strong, .sera-chat b, .sera-chat.markdown-body strong, .sera-chat.markdown-body b {
   font-weight: normal !important;
-  color: inherit !important;
+  color: #c8b89a !important;
   -webkit-font-smoothing: antialiased !important;
 }
+
+/* Light mode override for bold text */
+.light-mode .sera-chat strong, .light-mode .sera-chat b,
+.light-mode .sera-chat.markdown-body strong, .light-mode .sera-chat.markdown-body b {
+  color: #8b7355 !important;
+}
+
 .sera-chat {
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;

@@ -124,7 +124,7 @@ export const SECTION_REGISTRY = {
               {((props.products && props.products.length > 0) ? props.products : (props.isBuilding ? Array(4).fill({ name: "Generating Product...", price: "...", desc: "Curating product details and imagery..." }) : [])).map((p, i) => (
                 <div
                   key={i}
-                  className="product-card"
+                  className="product-card hover-lift"
                   onClick={() => {
                     if (props.onSelectProduct) {
                       props.onSelectProduct({
@@ -139,10 +139,19 @@ export const SECTION_REGISTRY = {
                       });
                     }
                   }}
-                  style={{ background: "transparent", border: "none", cursor: "pointer" }}
+                  style={{
+                    background: props.isDarkMode ? "#161618" : "#f9fafb",
+                    border: "none",
+                    borderRadius: 16,
+                    overflow: "hidden",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    transition: "transform 0.2s ease"
+                  }}
                 >
                   {/* Image: shimmer while loading, real image on top */}
-                  <div style={{ aspectRatio: "1 / 1", width: "100%", borderRadius: 12, overflow: "hidden", position: "relative", ...(p.verifiedUrl ? { backgroundColor: t.surface.secondary } : skStyle), transition: "background-color 0.3s ease" }}>
+                  <div style={{ aspectRatio: "1 / 1", width: "100%", position: "relative", ...(p.verifiedUrl ? { backgroundColor: t.surface.secondary } : skStyle), transition: "background-color 0.3s ease" }}>
                     {!p.verifiedUrl && <ImageLoadingPlaceholder />}
                     {p.imageUrl && (
                       <img
@@ -154,13 +163,20 @@ export const SECTION_REGISTRY = {
                         onError={e => { e.currentTarget.style.display = "none"; }}
                       />
                     )}
-                    {p.promo && <div style={{ position: "absolute", top: 12, left: 12, background: props.themeColor, color: "#000", fontSize: 10, fontWeight: 900, padding: "4px 8px", borderRadius: 4, zIndex: 2 }}>{p.promo}</div>}
+                    {p.promo && <div style={{ position: "absolute", top: 12, left: 12, background: props.themeColor || "rgba(200,184,154,0.9)", color: "#000", fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 10, zIndex: 2, backdropFilter: "blur(4px)" }}>{p.promo}</div>}
                   </div>
-                  {/* Text always visible immediately — never shimmer */}
-                  <div style={{ padding: "20px 12px" }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 500, color: t.text.primary, transition: "color 0.3s ease" }}>{p.name}</h3>
-                    <p style={{ fontSize: 14, color: t.text.secondary, marginTop: 4, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", transition: "color 0.3s ease" }}>{p.desc || p.description || "Premium botanical formulation and high-quality curated selection."}</p>
-                    <p style={{ fontSize: 16, fontWeight: 600, color: props.isDarkMode ? props.themeColor : t.text.primary, marginTop: 12, transition: "color 0.3s ease" }}>{p.price}</p>
+                  {/* Text Container */}
+                  <div style={{ padding: "16px", display: "flex", flexDirection: "column", flex: 1 }}>
+                    <h3 style={{ fontSize: 15, fontWeight: 700, color: t.text.primary, transition: "color 0.3s ease", marginBottom: 4, lineHeight: 1.3 }}>{p.name}</h3>
+                    <p style={{ fontSize: 12, color: t.text.secondary, marginBottom: 12, lineHeight: 1.4, flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", transition: "color 0.3s ease" }}>{p.desc || p.description || "Premium botanical formulation and high-quality curated selection."}</p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12 }}>
+                      <span style={{ fontSize: 15, fontWeight: 800, color: props.themeColor || "#c8b89a" }}>{p.price}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: t.text.secondary }}>
+                        <span>⭐ 4.9</span>
+                        <span>•</span>
+                        <span>Hot</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -199,7 +215,7 @@ export const SECTION_REGISTRY = {
         const items = props.items || [];
         const doubledItems = [...items, ...items]; // For infinite scroll effect
         return (
-          <div style={{ padding: "80px 0", background: props.isDarkMode ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)", overflow: "hidden", transition: "background 0.3s ease" }}>
+          <div style={{ padding: "80px 0", background: "transparent", overflow: "hidden", transition: "background 0.3s ease" }}>
             <div style={{ padding: "0 40px", marginBottom: 40 }}>
               <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, color: t.text.primary, transition: "color 0.3s ease" }}>Our Ethos</h2>
             </div>
@@ -319,10 +335,10 @@ export const SECTION_REGISTRY = {
               {/* Col 1: Brand & AI Status */}
               <div>
                 <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: t.text.primary, marginBottom: 12, transition: "color 0.3s ease" }}>
-                  {props.title || "LUNA"}
+                  {props.title || "My Store"}
                 </h3>
                 <p style={{ fontSize: 14, color: t.text.muted, marginBottom: 24, lineHeight: 1.6, transition: "color 0.3s ease" }}>
-                  {props.subtitle || "Advanced Botanical Skincare"}
+                  {props.subtitle || "Powered by SERA AI Agent Commerce OS."}
                 </p>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: t.surface.secondary, border: `1px solid ${t.border.subtle}`, padding: "6px 12px", borderRadius: 10, transition: "all 0.3s ease" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />
@@ -360,10 +376,14 @@ export const SECTION_REGISTRY = {
               </div>
             </div>
             <div style={{ maxWidth: 1200, margin: "0 auto", borderTop: `1px solid ${t.border.subtle}`, paddingTop: 40, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 20, transition: "border-color 0.3s ease" }}>
-              <p style={{ fontSize: 13, color: t.text.muted, transition: "color 0.3s ease" }}>&copy; 2026 {props.title || "LUNA"}. Generated autonomously by SERA Architecture.</p>
-              <div style={{ display: "flex", gap: 20 }}>
-                <span style={{ fontSize: 20, color: t.text.muted, cursor: "pointer", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color = props.themeColor} onMouseLeave={e => e.currentTarget.style.color = t.text.muted}>ð•</span>
-                <span style={{ fontSize: 20, color: t.text.muted, cursor: "pointer", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color = props.themeColor} onMouseLeave={e => e.currentTarget.style.color = t.text.muted}>ðŸ“¸</span>
+              <p style={{ fontSize: 13, color: t.text.muted, transition: "color 0.3s ease" }}>&copy; 2026 {props.title || "SERA Store"}. Generated autonomously by SERA Architecture.</p>
+                            <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                <span style={{ color: t.text.muted, cursor: "pointer", transition: "color 0.2s", display: "flex", alignItems: "center" }} onMouseEnter={e => e.currentTarget.style.color = props.themeColor} onMouseLeave={e => e.currentTarget.style.color = t.text.muted} title="X / Twitter">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </span>
+                <span style={{ color: t.text.muted, cursor: "pointer", transition: "color 0.2s", display: "flex", alignItems: "center" }} onMouseEnter={e => e.currentTarget.style.color = props.themeColor} onMouseLeave={e => e.currentTarget.style.color = t.text.muted} title="Instagram">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                </span>
               </div>
             </div>
           </footer>

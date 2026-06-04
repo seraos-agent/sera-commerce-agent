@@ -2,6 +2,29 @@
 import { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 
+const mdComponents = {
+  img: ({ node, ...props }) => (
+    <div style={{ marginTop: 12, marginBottom: 12, borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+      <img {...props} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', maxHeight: 220 }} />
+    </div>
+  ),
+  a: ({ node, ...props }) => {
+    if (props.href && props.href.startsWith('#store_')) {
+      const storeId = props.href.replace('#store_', '');
+      return (
+        <a {...props} onClick={(e) => {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('sera:openStore', { detail: storeId }));
+        }} style={{ display: 'inline-block', padding: '6px 14px', background: 'linear-gradient(135deg, #c8b89a 0%, #a8987a 100%)', color: '#000', borderRadius: 6, textDecoration: 'none', fontWeight: 700, marginTop: 0, marginBottom: 12, fontSize: 11, cursor: 'pointer', border: '1px solid #e0d0b0', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+          View Store
+        </a>
+      );
+    }
+    return <a {...props} style={{ color: '#c8b89a', textDecoration: 'underline' }} />;
+  }
+};
+
+
 // ─── Tokens (kept minimal for plan card/fallback) ───────────────────
 const C = {
   bg: "#090909",
@@ -295,16 +318,16 @@ export function SeraAgentMessage({ message, onAction }) {
 
   const isSimpleChat = !hasRuntime && !planData && !chat;
 
-  const headerLabel = planData ? displayText : (hasRuntime ? "Agent process completed" : "");
+  const headerLabel = planData ? displayText : (hasRuntime ? "Search completed" : "");
 
   const finalOutComponent = isSimpleChat ? (
     isStreaming ? (
       <div className="sera-chat markdown-body" style={{ fontFamily: C.sans, fontSize: 13, lineHeight: 1.5, marginTop: 8, opacity: 0.7 }}>
-        <ReactMarkdown>{displayText}</ReactMarkdown> <Cursor />
+        <ReactMarkdown components={mdComponents}>{displayText}</ReactMarkdown> <Cursor />
       </div>
     ) : (
       <div className="sera-chat markdown-body" style={{ fontFamily: C.sans, fontSize: 13, lineHeight: 1.65, marginTop: 4 }}>
-        <ReactMarkdown>{displayText}</ReactMarkdown>
+        <ReactMarkdown components={mdComponents}>{displayText}</ReactMarkdown>
       </div>
     )
   ) : (
@@ -319,7 +342,7 @@ export function SeraAgentMessage({ message, onAction }) {
           {logsComponent}
           {displayText && (
             <div className="sera-chat markdown-body" style={{ fontFamily: C.sans, fontSize: 13, lineHeight: 1.5, marginTop: 8, opacity: 0.7 }}>
-              <ReactMarkdown>{displayText}</ReactMarkdown> <Cursor />
+              <ReactMarkdown components={mdComponents}>{displayText}</ReactMarkdown> <Cursor />
             </div>
           )}
         </>
@@ -348,7 +371,7 @@ export function SeraAgentMessage({ message, onAction }) {
           
           {!planData && displayText && (
             <div className="sera-chat markdown-body" style={{ fontFamily: C.sans, fontSize: 13, lineHeight: 1.65, marginTop: 4, whiteSpace: "normal" }}>
-              <ReactMarkdown>{displayText}</ReactMarkdown>
+              <ReactMarkdown components={mdComponents}>{displayText}</ReactMarkdown>
             </div>
           )}
         </>
@@ -356,7 +379,7 @@ export function SeraAgentMessage({ message, onAction }) {
 
       {chat && (
         <div className="sera-chat markdown-body" style={{ fontFamily: C.sans, fontSize: 13, lineHeight: 1.65, marginTop: 12, whiteSpace: "normal" }}>
-          <ReactMarkdown>{chat}</ReactMarkdown>
+          <ReactMarkdown components={mdComponents}>{chat}</ReactMarkdown>
         </div>
       )}
     </div>

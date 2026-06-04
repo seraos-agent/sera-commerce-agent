@@ -57,6 +57,9 @@ class ChatRequest(BaseModel):
     storeContext: Optional[Dict[str, Any]] = None
     chatMode: Optional[str] = "agent"
     images: Optional[List[str]] = []
+    contextScope: Optional[str] = "marketplace"
+    activeStoreId: Optional[str] = None
+    activeProductId: Optional[str] = None
 
 class RetryAssetsRequest(BaseModel):
     schema_data: Dict[str, Any]
@@ -222,7 +225,14 @@ async def chat_with_agent(request: ChatRequest):
         
         # Build prompt — strip heavy payload fields to avoid token overflow
         context_str = ""
-        if request.storeContext:
+        if request.chatMode == "buyer":
+            buyer_ctx = {
+                "contextScope": request.contextScope,
+                "activeStoreId": request.activeStoreId,
+                "activeProductId": request.activeProductId
+            }
+            context_str = f"\n\nContext Location: {json.dumps(buyer_ctx)}"
+        elif request.storeContext:
             safe_ctx = {}
             SAFE_KEYS = {"session_id", "title", "themeColor", "heroBg", "storeName", "storeId", "chatMode", "activeStores", "activeTab"}
             for k, v in request.storeContext.items():
@@ -275,10 +285,11 @@ async def chat_with_agent(request: ChatRequest):
                         
                         clean = filter_self_intro(current_text)
                         
-                        # Strip bulleted thought process from the final chat bubble text, 
-                        # but keep them for cognition emission.
-                        chat_bubble_text = re.sub(r'^- .*\n?', '', clean, flags=re.MULTILINE).strip()
-                        
+                        # Strip bulleted thought process only for seller agent
+                        if request.chatMode != 'buyer':
+                            chat_bubble_text = re.sub(r'^- .*\n?', '', clean, flags=re.MULTILINE).strip()
+                        else:
+                            chat_bubble_text = clean.strip()
                         if clean:
                             # 1. Emit ephemeral text so the user sees the real-time typing effect (clean version)
                             yield json.dumps({
@@ -292,26 +303,27 @@ async def chat_with_agent(request: ChatRequest):
                             }) + "\n"
                             
                             # 2. Emit cognition bullet points for the dropdown log
-                            pre_json_text = clean.split('```')[0].strip()
-                            if not pre_json_text: pre_json_text = clean.split('{')[0].strip()
-                            
-                            lines = pre_json_text.split('\n')
-                            for i, line in enumerate(lines):
-                                line = line.strip()
-                                if not line: continue
+                            if request.chatMode != 'buyer':
+                                pre_json_text = clean.split('```')[0].strip()
+                                if not pre_json_text: pre_json_text = clean.split('{')[0].strip()
                                 
-                                if line.startswith('- ') or line.startswith('* '):
-                                    cognition_msg = line[2:]
-                                    yield json.dumps({
-                                        "event_id": f"evt_{event.id}_line_{i}",
-                                        "timestamp": int(event.timestamp) if event.timestamp else int(time.time()),
-                                        "session_id": session_id,
-                                        "type": "cognition",
-                                        "agent": event.author,
-                                        "message": cognition_msg,
-                                        "phase": infer_phase(cognition_msg),
-                                        "done": True
-                                    }) + "\n"
+                                lines = pre_json_text.split('\n')
+                                for i, line in enumerate(lines):
+                                    line = line.strip()
+                                    if not line: continue
+                                    
+                                    if line.startswith('- ') or line.startswith('* '):
+                                        cognition_msg = line[2:]
+                                        yield json.dumps({
+                                            "event_id": f"evt_{event.id}_line_{i}",
+                                            "timestamp": int(event.timestamp) if event.timestamp else int(time.time()),
+                                            "session_id": session_id,
+                                            "type": "cognition",
+                                            "agent": event.author,
+                                            "message": cognition_msg,
+                                            "phase": infer_phase(cognition_msg),
+                                            "done": True
+                                        }) + "\n"
 
                     func_calls = event.get_function_calls()
                     for fc in func_calls:
@@ -350,7 +362,8 @@ async def chat_with_agent(request: ChatRequest):
         final_text = list(messages_texts.values())[-1].strip() if messages_texts else ""
         
         # Strip bulleted thought process from the final text
-        final_text = re.sub(r'^- .*\n?', '', final_text, flags=re.MULTILINE).strip()
+        if request.chatMode != 'buyer':
+            final_text = re.sub(r'^- .*\n?', '', final_text, flags=re.MULTILINE).strip()
         
         text_out = final_text
         chat_out = ""
@@ -632,7 +645,8 @@ async def chat_with_agent(request: ChatRequest):
         start_time = time.time()
         active_tab = request.storeContext.get("activeTab") if request.storeContext else None
         intent_mode = "EXECUTION" if request.chatMode == "buyer" or active_tab == "analytics" else await classify_intent(request.input)
-        logger.info(f"🧠 Detected Intent Mode: {intent_mode}")
+        display_intent = "CONSULTATION" if request.chatMode == "buyer" else intent_mode
+        logger.info(f"🧠 Detected Intent Mode: {display_intent}")
         
         action = "idle"
         params = {}

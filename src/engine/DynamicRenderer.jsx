@@ -44,7 +44,7 @@ export function DynamicRenderer({ layout, globalProps }) {
                 <section style={{ padding: "60px 40px", background: globalProps.isDarkMode ? "#0f0f10" : "#ffffff" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
                     {[...new Set(sVids)].map((vidUrl, i) => (
-                      <div key={i} style={{ maxWidth: 1100, margin: "0 auto", borderRadius: 24, overflow: "hidden", position: "relative", aspectRatio: "21/9", background: "#000", boxShadow: "0 24px 60px rgba(0,0,0,0.5)", width: "100%" }}>
+                      <div key={i} style={{ maxWidth: 1100, margin: "0 auto", borderRadius: 24, overflow: "hidden", position: "relative", aspectRatio: "21/9", background: globalProps.isDarkMode ? "#1a1a1e" : "#f3f4f6", border: `1px solid ${globalProps.isDarkMode ? "#2a2a2e" : "#e5e7eb"}`, width: "100%" }}>
                         <video src={vidUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.8 }} />
                         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 60%)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "40px 60px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
@@ -68,20 +68,37 @@ export function DynamicRenderer({ layout, globalProps }) {
                 : (globalProps.promoVideo ? [globalProps.promoVideo] : []);
               if (pVids.length === 0) return null;
               return (
-                <section style={{ padding: "80px 40px", background: globalProps.isDarkMode ? "#0a0a0b" : "#f9fafb" }}>
-                  <div style={{ display: "flex", gap: 24, overflowX: "auto", paddingBottom: 24, scrollSnapType: "x mandatory", justifyContent: pVids.length === 1 ? "center" : "flex-start" }}>
-                    {[...new Set(pVids)].map((vidUrl, i) => (
-                      <div key={i} style={{ flexShrink: 0, width: 400, maxWidth: "100%", borderRadius: 24, overflow: "hidden", position: "relative", aspectRatio: "9/16", background: "#000", boxShadow: "0 24px 60px rgba(0,0,0,0.5)", scrollSnapAlign: "center" }}>
-                        <video src={vidUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 40%)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "30px 40px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                            <span style={{ background: "#ef4444", color: "#fff", fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 100, textTransform: "uppercase", letterSpacing: 1 }}>Hot Pick</span>
-                          </div>
-                          <h2 style={{ fontSize: 28, color: "#fff", fontFamily: "'Playfair Display', serif", fontWeight: 700, marginBottom: 8, lineHeight: 1.1 }}>Trending Now</h2>
-                          <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 14, lineHeight: 1.5, marginBottom: 20 }}>Discover our community's favorite essentials in action.</p>
-                        </div>
+                <section style={{ padding: "80px 40px", background: globalProps.isDarkMode ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)", borderTop: `1px solid ${globalProps.isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
+                  <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 40 }}>
+                      <div>
+                        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, fontWeight: 700, color: globalProps.isDarkMode ? "#fff" : "#111", marginBottom: 8 }}>
+                          Featured Promo Campaigns
+                        </h2>
+                        <p style={{ color: globalProps.isDarkMode ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)", fontSize: 16 }}>
+                          Exclusive promotions and flash sales powered by Veo AI.
+                        </p>
                       </div>
-                    ))}
+                      <span style={{ fontSize: 12, fontWeight: 800, background: "#ef4444", color: "#fff", padding: "6px 16px", borderRadius: 100, textTransform: "uppercase", letterSpacing: 1 }}>Live Now</span>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 24 }}>
+                      {[...new Set(pVids)].map((vidUrl, i) => (
+                        <div key={i} style={{ borderRadius: 16, overflow: "hidden", position: "relative", aspectRatio: "9/16", background: globalProps.isDarkMode ? "#1a1a1e" : "#f3f4f6", border: `1px solid ${globalProps.isDarkMode ? "#2a2a2e" : "#e5e7eb"}` }}>
+                          <video src={vidUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 40%)" }} />
+                          <div style={{ position: "absolute", bottom: 20, left: 20, right: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                            <div>
+                              <h3 style={{ color: "#fff", fontSize: 22, fontWeight: 700, marginBottom: 4, fontFamily: "'Playfair Display', serif" }}>{globalProps.title || "My Store"}</h3>
+                              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14 }}>Special Campaign</p>
+                            </div>
+                            <span style={{ color: "#ffffff", fontSize: 13, fontWeight: 700, background: "#ef4444", padding: "8px 16px", borderRadius: 100, border: "none", whiteSpace: "nowrap", flexShrink: 0 }}>
+                              Shop Now
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </section>
               );
@@ -92,3 +109,4 @@ export function DynamicRenderer({ layout, globalProps }) {
     </div>
   );
 }
+

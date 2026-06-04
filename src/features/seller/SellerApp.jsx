@@ -1159,11 +1159,10 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                             props: { ...section.props, heroImage: match.proxy_url || match.url }
                           };
                         }
-                        if (match && match.status === "failed" && section.props?.heroImage !== "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=1600") {
-                          const fallbackUrl = "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=1600";
+                        if (match && match.status === "failed" && section.props?.heroImage) {
                           return {
                             ...section,
-                            props: { ...section.props, heroImage: fallbackUrl }
+                            props: { ...section.props, heroImage: "" }
                           };
                         }
                         return section;
@@ -1185,14 +1184,13 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                             };
                           } else if (match && match.status === "failed" && (!p.verificationError || p.stepId)) {
                             changed = true;
-                            const fallbackUrl = "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=800";
                             return {
                               ...p,
                               stepId: null,
                               verificationError: match.error || "Failed to load image",
-                              verifiedUrl: fallbackUrl,
-                              imageUrl: fallbackUrl,
-                              pendingUrl: fallbackUrl
+                              verifiedUrl: "",
+                              imageUrl: "",
+                              pendingUrl: ""
                             };
                           }
                           return p;
@@ -1216,14 +1214,13 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                             };
                           } else if (match && match.status === "failed" && (!item.verificationError || item.stepId)) {
                             changed = true;
-                            const fallbackUrl = "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=800";
                             return {
                               ...item,
                               stepId: null,
                               verificationError: match.error || "Failed to load image",
-                              verifiedUrl: fallbackUrl,
-                              imageUrl: fallbackUrl,
-                              pendingUrl: fallbackUrl
+                              verifiedUrl: "",
+                              imageUrl: "",
+                              pendingUrl: ""
                             };
                           }
                           return item;
@@ -1701,11 +1698,13 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                     const heroTitle = storeSchema.layout?.find(s => s.type === "hero")?.props?.title;
                     const metaName = storeSchema.metadata?.brand_identity;
                     const storeName = storeSchema.name || metaName || heroTitle || "Unknown Brand";
+                    const storeCategory = storeSchema.category || storeSchema.metadata?.category || storeSchema.metadata?.industry || "General Store";
                     const payload = {
                       session_id: "guest_default",
                       store_id: storeSchema.id,
+                      name: storeName,
                       store_name: storeName,
-                      category: storeSchema.metadata?.objective || "Autonomous Commerce",
+                      category: storeCategory,
                       products: productsList,
                       type: "seller"
                     };
@@ -1726,7 +1725,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                       const newStoreObj = {
                         id: finalStoreId,
                         name: storeName,
-                        category: storeSchema.metadata?.objective || "Autonomous Commerce",
+                        category: storeCategory,
                         logo: "",
                         cover: storeSchema.layout?.find(s => s.type === "hero")?.props?.heroImage || "",
                         trustScore: "99.9%",
@@ -2177,7 +2176,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                       </div>
                       <div>
                         <h4 style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>High Inquiry Rate</h4>
-                        <p style={{ fontSize: 12, color: t.subtext, lineHeight: 1.4 }}>The Buyer AI has successfully closed 34 sales by answering questions about "Luna Glow Serum".</p>
+                        <p style={{ fontSize: 12, color: t.subtext, lineHeight: 1.4 }}>The Buyer AI has successfully closed 34 sales by answering questions about your top products.</p>
                       </div>
                     </div>
                     <div style={{ background: "transparent", border: "none", padding: "8px 0", display: "flex", gap: 12 }}>
@@ -2440,10 +2439,10 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                     </div>
                     <div style={{ display: "flex", gap: 40, alignItems: "center" }}>
                       {/* LEFT SIDE: Preview */}
-                      <div style={{ flex: "1", background: isDarkMode ? "#121214" : "#f9fafb", borderRadius: 12, border: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}`, display: "flex", alignItems: "center", justifyContent: "center", padding: 32, minHeight: 280, position: "relative" }}>
+                      <div style={{ flex: "1", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 280, position: "relative" }}>
                         {videoFormat === "landscape" ? (
                           // Landscape Preview
-                          <div style={{ width: "100%", aspectRatio: "16/9", background: isDarkMode ? "#1a1a1e" : "#e5e7eb", borderRadius: 8, overflow: "hidden", position: "relative", boxShadow: "0 8px 24px rgba(0,0,0,0.2)" }}>
+                          <div style={{ width: "100%", aspectRatio: "16/9", background: isDarkMode ? "#1a1a1e" : "#f3f4f6", borderRadius: 12, overflow: "hidden", position: "relative", border: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}` }}>
                             {storeData.storeVideo ? (
                               <video src={storeData.storeVideo} autoPlay loop muted style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.9 }} />
                             ) : (
@@ -2454,14 +2453,35 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                             )}
                           </div>
                         ) : (
-                          // Vertical Preview
-                          <div style={{ height: 340, aspectRatio: "9/16", background: isDarkMode ? "#1a1a1e" : "#e5e7eb", borderRadius: 12, overflow: "hidden", position: "relative", boxShadow: "0 12px 32px rgba(0,0,0,0.3)", border: `4px solid ${isDarkMode ? "#2c2c35" : "#ffffff"}` }}>
+                          // Vertical Preview — Buyer-style card
+                          <div style={{ height: 340, aspectRatio: "9/16", borderRadius: 16, overflow: "hidden", position: "relative", background: isDarkMode ? "#1a1a1e" : "#f3f4f6", cursor: "pointer", border: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}` }}>
                             {storeData.promoVideo ? (
-                              <video src={storeData.promoVideo} autoPlay loop muted style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.9 }} />
+                              <>
+                                <video src={storeData.promoVideo} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                {/* Gradient overlay */}
+                                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 45%)" }} />
+                                {/* LIVE badge */}
+                                <div style={{ position: "absolute", top: 12, left: 12, display: "flex", alignItems: "center", gap: 6, background: "rgba(239,68,68,0.85)", backdropFilter: "blur(6px)", padding: "4px 10px", borderRadius: 100, border: "1px solid rgba(239,68,68,0.4)" }}>
+                                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff", animation: "pulse 1.5s infinite" }} />
+                                  <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", letterSpacing: 1, textTransform: "uppercase" }}>Live</span>
+                                </div>
+                                {/* Bottom info */}
+                                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "16px 16px 20px" }}>
+                                  <span style={{ fontSize: 10, fontWeight: 800, color: themeColor, letterSpacing: 1, textTransform: "uppercase", display: "block", marginBottom: 4 }}>Promo Campaign</span>
+                                  <h3 style={{ color: "#fff", fontSize: 18, fontWeight: 700, marginBottom: 10, lineHeight: 1.2, fontFamily: "'Playfair Display', serif" }}>
+                                    {storeSchema?.metadata?.brand_identity || storeData.title || "My Store"}
+                                  </h3>
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                    <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 11 }}>Special Campaign</span>
+                                    <span style={{ color: "#4ade80", fontSize: 11, fontWeight: 700, background: "rgba(74,222,128,0.15)", padding: "4px 10px", borderRadius: 8, backdropFilter: "blur(4px)", border: "1px solid rgba(74,222,128,0.3)" }}>View Store</span>
+                                  </div>
+                                </div>
+                              </>
                             ) : (
-                              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: t.subtext }}>
-                                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: 8 }}><rect x="6" y="2" width="12" height="20" rx="2" ry="2" /><path d="M10 10l5 2-5 2v-4z" /></svg>
-                                <span style={{ fontSize: 10, letterSpacing: 1, textTransform: "uppercase", fontWeight: 700 }}>No Video</span>
+                              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: t.subtext, background: isDarkMode ? "#1a1a1e" : "#e5e7eb" }}>
+                                <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: 10, opacity: 0.5 }}><rect x="6" y="2" width="12" height="20" rx="2" ry="2" /><path d="M10 10l5 2-5 2v-4z" /></svg>
+                                <span style={{ fontSize: 11, letterSpacing: 1, textTransform: "uppercase", fontWeight: 700, opacity: 0.5 }}>No Video</span>
+                                <span style={{ fontSize: 10, color: t.subtext, marginTop: 6, opacity: 0.4 }}>Upload or generate a 9:16 video</span>
                               </div>
                             )}
                           </div>
@@ -2527,7 +2547,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                               {(storeData.storeVideos || (storeData.storeVideo ? [storeData.storeVideo] : [])).map((vid, idx) => (
                                 <div key={idx} style={{ position: "relative", width: 120, height: 68, borderRadius: 8, overflow: "hidden", border: storeData.storeVideo === vid ? `2px solid #c8b89a` : `1px solid ${t.border}`, flexShrink: 0, cursor: "pointer", background: "#000" }} onClick={() => setStoreData(p => ({ ...p, storeVideo: vid }))}>
                                   <video src={vid} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 }} />
-                                  <button onClick={(e) => { e.stopPropagation(); setStoreData(p => { const nv = (p.storeVideos || []).filter(v => v !== vid); return { ...p, storeVideos: nv, storeVideo: p.storeVideo === vid ? (nv[0] || "") : p.storeVideo }; }); }} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 12 }}>Ã—</button>
+                                  <button onClick={(e) => { e.stopPropagation(); setStoreData(p => { const nv = (p.storeVideos || []).filter(v => v !== vid); return { ...p, storeVideos: nv, storeVideo: p.storeVideo === vid ? (nv[0] || "") : p.storeVideo }; }); }} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
                                 </div>
                               ))}
                             </div>
@@ -2589,7 +2609,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                               {(storeData.promoVideos || (storeData.promoVideo ? [storeData.promoVideo] : [])).map((vid, idx) => (
                                 <div key={idx} style={{ position: "relative", width: 68, height: 120, borderRadius: 8, overflow: "hidden", border: storeData.promoVideo === vid ? `2px solid #c8b89a` : `1px solid ${t.border}`, flexShrink: 0, cursor: "pointer", background: "#000" }} onClick={() => setStoreData(p => ({ ...p, promoVideo: vid }))}>
                                   <video src={vid} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 }} />
-                                  <button onClick={(e) => { e.stopPropagation(); setStoreData(p => { const nv = (p.promoVideos || []).filter(v => v !== vid); return { ...p, promoVideos: nv, promoVideo: p.promoVideo === vid ? (nv[0] || "") : p.promoVideo }; }); }} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 12 }}>Ã—</button>
+                                  <button onClick={(e) => { e.stopPropagation(); setStoreData(p => { const nv = (p.promoVideos || []).filter(v => v !== vid); return { ...p, promoVideos: nv, promoVideo: p.promoVideo === vid ? (nv[0] || "") : p.promoVideo }; }); }} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
                                 </div>
                               ))}
                             </div>
@@ -2684,10 +2704,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                         <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 16px 0 0", background: isDarkMode ? "#0f0f10" : "#ffffff", borderRadius: 8, border: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}`, overflow: "hidden" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                             {(() => {
-                              let imgUrl = p.verifiedUrl || p.imageUrl || p.image;
-                              if (imgUrl && imgUrl.includes("unsplash.com")) {
-                                imgUrl = imgUrl.replace(/w=\d+/, "w=200").replace(/q=\d+/, "q=80");
-                              }
+                              const imgUrl = p.verifiedUrl || p.imageUrl || p.image;
                               return imgUrl ? (
                                 <img src={imgUrl} alt={p.name} style={{ width: 72, height: 72, minWidth: 72, minHeight: 72, flexShrink: 0, objectFit: "cover", borderRight: `1px solid ${t.border}` }} />
                               ) : (

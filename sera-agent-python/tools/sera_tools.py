@@ -49,15 +49,17 @@ async def get_store_analytics(store_id: str) -> dict:
         logger.error(f"Error calling GET /api/analytics: {str(e)}")
         return {"success": False, "error": str(e)}
 
-async def get_stores(session_id: str) -> dict:
+async def get_stores(session_id: str = "all") -> dict:
     """
     Fetches all active stores associated with the given session ID.
-    If called by a buyer session, it automatically searches all active marketplace stores.
+    CRITICAL: If you are the buyer agent looking for stores, you MUST pass "all" as the session_id.
     Use this tool to discover existing stores or check if a store name exists.
     """
     url = f"{NODE_BACKEND_URL}/api/stores"
     # Override session_id for buyers to discover all stores
-    actual_session = "all" if session_id.startswith("buyer_") else session_id
+    actual_session = "all" if session_id in ["current_session", "all", ""] else session_id
+    if str(session_id).startswith("buyer_"):
+        actual_session = "all"
     params = {"session_id": actual_session}
     logger.info(f"🏬 Calling Node.js GET /api/stores with session_id={actual_session}")
     try:
@@ -88,6 +90,56 @@ async def get_products(store_id: str) -> dict:
             return data
     except Exception as e:
         logger.error(f"Error calling GET /api/products: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+async def search_products(query: str, store_id: str = None) -> dict:
+    """
+    Search for products across the marketplace or within a specific store.
+    Provides semantic ranking/scoring to find the best recommendations.
+    """
+    logger.info(f"🔍 Searching products for query='{query}' (store_id={store_id})")
+    url = f"{NODE_BACKEND_URL}/api/search-products"
+    payload = {"query": query}
+    if store_id:
+        payload["store_id"] = store_id
+        
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(url, json=payload)
+            response.raise_for_status()
+            data = response.json()
+            logger.info(f"search_products returning: {len(data.get('results', []))} products")
+            return data
+    except Exception as e:
+        logger.error(f"Error calling POST /api/search-products: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+async def search_stores(query: str) -> dict:
+    """
+    Search for stores in the marketplace matching the given query (e.g. 'electronics', 'fashion').
+    """
+    logger.info(f"🏬 Searching stores for query='{query}'")
+    try:
+        stores_data = await get_stores("all")
+        if not stores_data.get("success", True):
+            return stores_data
+            
+        stores = stores_data.get("stores", [])
+        query_lower = query.lower()
+        
+        # Simple local filtering for demonstration
+        results = []
+        for s in stores:
+            name = s.get("name", "").lower()
+            desc = s.get("desc", "").lower()
+            cat = s.get("category", "").lower()
+            
+            if query_lower in name or query_lower in desc or query_lower in cat:
+                results.append(s)
+                
+        return {"success": True, "stores": results, "count": len(results)}
+    except Exception as e:
+        logger.error(f"Error in search_stores: {str(e)}")
         return {"success": False, "error": str(e)}
 
 async def save_campaign(store_id: str, campaigns: list, session_id: str = "guest_default") -> dict:
@@ -253,3 +305,53 @@ async def generate_store_assets(schema: dict, progress_queue=None) -> dict:
         "schema": schema,
         "results": results
     }
+
+
+async def get_promotions(store_id: str = None) -> dict:
+    """
+    Fetch only products that have an active promotion or discount.
+    Helps the buyer find the best deals quickly without searching the entire catalog.
+    """
+    logger.info(f"🎁 Calling Node.js GET /api/products for promotions (store_id={store_id})")
+    url = f"{NODE_BACKEND_URL}/api/products"
+    params = {}
+    if store_id and store_id != "all":
+        params["store_id"] = store_id
+        
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            products = data.get('products', [])
+            # Filter products that have a promo field
+            promos = [p for p in products if p.get('promo') and str(p.get('promo')).strip() != ""]
+            logger.info(f"get_promotions returning: {len(promos)} promotional products")
+            return {"success": True, "promotions": promos}
+    except Exception as e:
+        logger.error(f"Error calling GET /api/products for promos: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+async def get_categories(store_id: str = None) -> dict:
+    """
+    Get a simple list of product categories available in the marketplace or store.
+    Use this to give buyers an overview of what's available before diving into specific products.
+    """
+    logger.info(f"📂 Fetching categories (store_id={store_id})")
+    url = f"{NODE_BACKEND_URL}/api/products"
+    params = {}
+    if store_id and store_id != "all":
+        params["store_id"] = store_id
+        
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            products = data.get('products', [])
+            categories = list(set([p.get('category') for p in products if p.get('category')]))
+            logger.info(f"get_categories returning: {len(categories)} categories")
+            return {"success": True, "categories": categories}
+    except Exception as e:
+        logger.error(f"Error calling GET /api/products for categories: {str(e)}")
+        return {"success": False, "error": str(e)}

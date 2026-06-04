@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { storeReducer, initialState } from './storeReducer';
 import { createSetter } from './storeActions';
-import { INITIAL_LUNA_SCHEMA } from '../utils/constants';
+import { INITIAL_STORE_SCHEMA } from '../utils/constants';
 
 const StoreContext = createContext();
 
@@ -21,6 +21,13 @@ export const StoreProvider = ({ children }) => {
     try {
       const saved = localStorage.getItem("sera_hackathon_store_schema");
       if (saved) savedSchema = JSON.parse(saved);
+      const savedMsgs = localStorage.getItem("sera_hackathon_buyer_msgs");
+      if (savedMsgs) {
+        try {
+          const parsed = JSON.parse(savedMsgs);
+          if (parsed && parsed.length > 0) initial.buyerAiMessages = parsed;
+        } catch(e){}
+      }
       const stores = localStorage.getItem("sera_hackathon_user_stores");
       if (stores) {
         savedStores = JSON.parse(stores);
@@ -31,7 +38,7 @@ export const StoreProvider = ({ children }) => {
     
     return {
       ...initial,
-      storeSchema: savedSchema || INITIAL_LUNA_SCHEMA,
+      storeSchema: savedSchema || INITIAL_STORE_SCHEMA,
       userStores: savedStores
     };
   });
@@ -46,6 +53,18 @@ export const StoreProvider = ({ children }) => {
       // ignore
     }
   }, [state.storeSchema]);
+
+  
+  // Persist buyerAiMessages changes
+  useEffect(() => {
+    try {
+      if (state.buyerAiMessages) {
+        localStorage.setItem("sera_hackathon_buyer_msgs", JSON.stringify(state.buyerAiMessages));
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [state.buyerAiMessages]);
 
   // Persist userStores changes
   useEffect(() => {

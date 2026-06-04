@@ -1,6 +1,6 @@
 import os
 from google.adk import Agent
-from tools.sera_tools import get_stores, get_products
+from tools.sera_tools import get_stores, get_products, search_products, search_stores, get_promotions, get_categories
 
 _dir = os.path.dirname(__file__)
 _instruction = open(os.path.join(_dir, "prompts", "buyer_agent.txt"), encoding="utf-8").read()
@@ -14,5 +14,5 @@ buyer_agent = Agent(
     description="Buyer agent for assisting customers in discovering shops and products",
     model=model_path,
     instruction=_instruction,
-    tools=[get_stores, get_products]
+    tools=[get_stores, get_products, search_products, search_stores, get_promotions, get_categories]
 )

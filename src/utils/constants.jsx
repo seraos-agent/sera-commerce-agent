@@ -45,22 +45,8 @@ export const NAV_ICONS = [
     )
   },
 ];
-export const INITIAL_PRODUCTS = [
-  { name: "Luna Glow Serum", desc: "Brightening & Hydrating", price: "$29.00", promo: "20% OFF", imageUrl: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=500&q=80", verifiedUrl: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=500&q=80" },
-  { name: "Luna Day Cream", desc: "Moisturizer & Nourish", price: "$32.00", imageUrl: "https://images.unsplash.com/photo-1608248593842-8d76d4948a33?auto=format&fit=crop&w=500&q=80", verifiedUrl: "https://images.unsplash.com/photo-1608248593842-8d76d4948a33?auto=format&fit=crop&w=500&q=80" },
-  { name: "Luna Gentle Cleanser", desc: "Daily Purifying Cleanser", price: "$18.00", imageUrl: "https://images.unsplash.com/photo-1556228720-1c2a01f52d59?auto=format&fit=crop&w=500&q=80", verifiedUrl: "https://images.unsplash.com/photo-1556228720-1c2a01f52d59?auto=format&fit=crop&w=500&q=80" },
-  { name: "Luna Face Mist", desc: "Hydrating & Refreshing", price: "$16.00", promo: "Buy 1 Get 1", imageUrl: "https://images.unsplash.com/photo-1570194065650-d60fd15d8689?auto=format&fit=crop&w=500&q=80", verifiedUrl: "https://images.unsplash.com/photo-1570194065650-d60fd15d8689?auto=format&fit=crop&w=500&q=80" },
-  { name: "Luna Eye Serum", desc: "Brightening & Anti-aging", price: "$38.00", imageUrl: "https://images.unsplash.com/photo-1563804447971-6e113ab80713?auto=format&fit=crop&w=500&q=80", verifiedUrl: "https://images.unsplash.com/photo-1563804447971-6e113ab80713?auto=format&fit=crop&w=500&q=80" },
-  { name: "Luna Toner", desc: "Balancing & Soothing", price: "$22.00", imageUrl: "https://images.unsplash.com/photo-1599305090598-fe179d501227?auto=format&fit=crop&w=500&q=80", verifiedUrl: "https://images.unsplash.com/photo-1599305090598-fe179d501227?auto=format&fit=crop&w=500&q=80" },
-  { name: "Luna SPF 50", desc: "UV Protection Daily", price: "$27.00", imageUrl: "https://images.unsplash.com/photo-1601049541289-9b1b7ceb4cb1?auto=format&fit=crop&w=500&q=80", verifiedUrl: "https://images.unsplash.com/photo-1601049541289-9b1b7ceb4cb1?auto=format&fit=crop&w=500&q=80" },
-  { name: "Luna Night Cream", desc: "Repair & Renewal", price: "$35.00", imageUrl: "https://images.unsplash.com/photo-1629198688000-71f23e745b6e?auto=format&fit=crop&w=500&q=80", verifiedUrl: "https://images.unsplash.com/photo-1629198688000-71f23e745b6e?auto=format&fit=crop&w=500&q=80" },
-];
-export const INITIAL_PHILOSOPHY = [
-  { label: "ORGANIC ESSENCE", sub: "Pure & Botanical", imageUrl: "https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?auto=format&fit=crop&w=500&q=80", verifiedUrl: "https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?auto=format&fit=crop&w=500&q=80" },
-  { label: "ETHICAL INTEGRITY", sub: "100% Cruelty Free", imageUrl: "https://images.unsplash.com/photo-1583088580009-2d947c3e90a6?auto=format&fit=crop&w=500&q=80", verifiedUrl: "https://images.unsplash.com/photo-1583088580009-2d947c3e90a6?auto=format&fit=crop&w=500&q=80" },
-  { label: "CLINICAL EXCELLENCE", sub: "Expertly Formulated", imageUrl: "https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=500&q=80", verifiedUrl: "https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=500&q=80" },
-  { label: "SUSTAINABLE FUTURE", sub: "Conscious Luxury", imageUrl: "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?auto=format&fit=crop&w=500&q=80", verifiedUrl: "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?auto=format&fit=crop&w=500&q=80" },
-];
+export const INITIAL_PRODUCTS = [];
+export const INITIAL_PHILOSOPHY = [];
 export const INIT_MESSAGES = [
   { role: "agent", text: "Hello I'm SERA, ready when you are.", action: "idle", hasAction: false }
 ];
@@ -282,9 +268,9 @@ export const storeThemeLight = {
 };
 
 
-export const INITIAL_LUNA_SCHEMA = {
+export const INITIAL_STORE_SCHEMA = {
     metadata: {
-      brand_identity: "Luna Skincare",
+      brand_identity: "",
       objective: "Autonomous Commerce"
     },
     theme: {
@@ -293,45 +279,7 @@ export const INITIAL_LUNA_SCHEMA = {
       isDarkMode: true,
       fontFamily: "'Playfair Display', serif"
     },
-    layout: [
-      {
-        id: "init-hero",
-        type: "hero",
-        variant: "centered",
-        props: {
-          title: "LUNA",
-          subtitle: "Advanced Botanical Skincare",
-          collection: "Spring Curated Release",
-          buttonText: "Explore Collection",
-          promoBanner: "COMPLIMENTARY SHIPPING ON ALL ORDERS OVER $150",
-          heroVariant: "centered",
-          heroImage: "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?auto=format&fit=crop&w=1000&q=80"
-        }
-      },
-      {
-        id: "init-products",
-        type: "featured_products",
-        variant: "grid",
-        props: {
-          sectionTitle: "Curated Selection",
-          products: INITIAL_PRODUCTS
-        }
-      },
-      {
-        id: "init-philosophy",
-        type: "philosophy",
-        variant: "scroller",
-        props: {
-          items: INITIAL_PHILOSOPHY
-        }
-      },
-      {
-        id: "init-footer",
-        type: "footer",
-        variant: "default",
-        props: {}
-      }
-    ],
+    layout: [],
     testimonials: [],
     faq: [],
     footer: {

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import SeraAgentMessage from '../../SeraAgentMessage';
 import { useStore } from '../../store/storeContext';
 import { CURATED_STORES } from '../../utils/constants';
+import { sendChat } from '../../lib/agentApi';
 
 export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
   const {
@@ -21,7 +23,16 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
     setSelectedPhilosophy, setToastMessage
   } = useStore();
 
-const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [abortController, setAbortController] = useState(null);
+  
+  const handleAbort = () => {
+    if (abortController) {
+      abortController.abort();
+      setBuyerAiStatus("");
+      setAbortController(null);
+    }
+  };
   const [isResizing, setIsResizing] = useState(false);
   const startResizing = (e) => {
     e.preventDefault();
@@ -51,31 +62,31 @@ const [chatOpen, setChatOpen] = useState(false);
       document.body.style.userSelect = "auto";
     };
   }, [isResizing]);
-const [activeNav, setActiveNav] = useState("home");
-const getDisplayBrandName = (store) => store?.name || "Unknown Brand";
+  const [activeNav, setActiveNav] = useState("home");
+  const getDisplayBrandName = (store) => store?.name || "Unknown Brand";
 
-const toggleFollowStore = (storeId) => {
-  setFollowedStores(prev => {
-    const set = prev instanceof Set ? new Set(prev) : new Set(Array.isArray(prev) ? prev : []);
-    if (set.has(storeId)) {
-      set.delete(storeId);
-    } else {
-      set.add(storeId);
-    }
-    return set;
+  const toggleFollowStore = (storeId) => {
+    setFollowedStores(prev => {
+      const set = prev instanceof Set ? new Set(prev) : new Set(Array.isArray(prev) ? prev : []);
+      if (set.has(storeId)) {
+        set.delete(storeId);
+      } else {
+        set.add(storeId);
+      }
+      return set;
+    });
+  };
+
+  const filteredStores = [...(userStores || []), ...CURATED_STORES].filter(s => {
+    if (selectedCategoryFilter !== "all" && s.category !== selectedCategoryFilter) return false;
+    return true;
   });
-};
 
-const filteredStores = [...(userStores || []), ...CURATED_STORES].filter(s => {
-  if (selectedCategoryFilter !== "all" && s.category !== selectedCategoryFilter) return false;
-  return true;
-});
-
-const filteredProducts = CURATED_STORES.flatMap(store => store.products || []).filter(p => {
-  if (selectedCategoryFilter !== "all" && p.category !== selectedCategoryFilter) return false;
-  if (buyerSearchQuery && !p.name.toLowerCase().includes(buyerSearchQuery.toLowerCase())) return false;
-  return true;
-});
+  const filteredProducts = CURATED_STORES.flatMap(store => store.products || []).filter(p => {
+    if (selectedCategoryFilter !== "all" && p.category !== selectedCategoryFilter) return false;
+    if (buyerSearchQuery && !p.name.toLowerCase().includes(buyerSearchQuery.toLowerCase())) return false;
+    return true;
+  });
 
   const handleSearch = (e) => {
     if (e.key === 'Enter' && buyerSearchQuery.trim()) {
@@ -83,7 +94,7 @@ const filteredProducts = CURATED_STORES.flatMap(store => store.products || []).f
     }
   };
 
-  
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
   };
@@ -111,42 +122,140 @@ const filteredProducts = CURATED_STORES.flatMap(store => store.products || []).f
   };
   const chatEndRef = useRef(null);
 
-  
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [buyerAiMessages, buyerAiStatus, chatOpen]);
+
+  // Listen for "View Store" button clicks from SeraAgentMessage chat bubbles
+  useEffect(() => {
+    const handleOpenStore = (e) => {
+      let storeId = "";
+      if (typeof e.detail === 'string') {
+        storeId = e.detail.trim();
+      } else if (e.detail && e.detail.storeId) {
+        storeId = String(e.detail.storeId).trim();
+      }
+      if (!storeId) return;
+      const allStores = [...(userStores || []), ...CURATED_STORES];
+      const found = allStores.find(s => 
+        String(s.id) === String(storeId) || 
+        String(s._id) === String(storeId) || 
+        String(s.store_id) === String(storeId) ||
+        String(s.name || '').toLowerCase().replace(/\s+/g, '_') === String(storeId).toLowerCase()
+      );
+      if (found) {
+        setSelectedStorefront(found);
+      } else {
+        // Fallback: fetch from Node backend and open
+        fetch(`http://localhost:3001/api/stores?session_id=all`)
+          .then(r => r.json())
+          .then(data => {
+            const backendStores = data.stores || [];
+            const match = backendStores.find(s =>
+              String(s.id) === String(storeId) ||
+              String(s._id) === String(storeId) ||
+              String(s.store_id) === String(storeId)
+            );
+            if (match) {
+              // Normalize backend store data to frontend format
+              const normalizedStore = {
+                ...match,
+                id: match.store_id || match._id || match.id,
+                name: match.store_name || match.name || "Unknown Store",
+                desc: match.description || match.desc || "An autonomous AI-curated store.",
+                category: match.category || "General",
+                isUserStore: false,
+                storeData: {
+                  ...match,
+                  products: match.products || []
+                }
+              };
+              setSelectedStorefront(normalizedStore);
+            }
+          })
+          .catch(() => {});
+      }
+    };
+    window.addEventListener('sera:openStore', handleOpenStore);
+    return () => window.removeEventListener('sera:openStore', handleOpenStore);
+  }, [userStores, setSelectedStorefront]);
+
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(""), 3000);
   };
 
-  
-  const handleBuyerAiSubmit = (e) => {
+
+  const handleBuyerAiSubmit = async (e) => {
     e.preventDefault();
     if (!buyerAiQuery.trim()) return;
-    setBuyerAiMessages([...buyerAiMessages, { id: Date.now(), role: "user", text: buyerAiQuery }]);
+    const userText = buyerAiQuery.trim();
+    const newMsgId = Date.now();
+    setBuyerAiMessages(prev => [...prev, { role: "user", text: userText, id: `user-${newMsgId}` }]);
     setBuyerAiQuery("");
     setBuyerAiStatus("Analyzing request...");
-    setTimeout(() => {
-      setBuyerAiStatus("Generating response...");
-      setTimeout(() => {
-        setBuyerAiMessages(prev => [...prev, { id: Date.now(), role: "agent", text: "I've found some amazing products matching your criteria! Check them out in the feed." }]);
-        setBuyerAiStatus("");
-      }, 1000);
-    }, 1000);
-  };
-const handleAgentMsg = () => {
-    if (!buyerAiQuery.trim()) return;
-    const msg = buyerAiQuery;
-    setBuyerAiMessages(prev => [...prev, { role: 'user', text: msg }]);
-    setBuyerAiQuery("");
-    setBuyerAiStatus("analyzing");
     
-    // Simulate AI response
-    setTimeout(() => {
-      setBuyerAiStatus("searching");
-      setTimeout(() => {
-        setBuyerAiMessages(prev => [...prev, { role: 'agent', text: `I found several highly rated ${msg.toLowerCase()} from our verified autonomous stores. Would you like to see options focused on sustainability or premium ingredients?` }]);
-        setBuyerAiStatus("idle");
-      }, 1200);
-    }, 800);
+    const controller = new AbortController();
+    setAbortController(controller);
+    
+    try {
+      const storeContext = {
+        session_id: "buyer_session_1",
+        storeName: "SERA AI Store",
+        chatMode: "buyer"
+      };
+      const response = await sendChat({
+        input: userText,
+        history: buyerAiMessages,
+        storeContext,
+        chatMode: "buyer"
+      }, controller.signal);
+      if (!response.body) throw new Error("No response body");
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (value) {
+          const chunk = decoder.decode(value, { stream: !done });
+          buffer += chunk;
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const data = JSON.parse(line);
+              if (data.type === "cognition" && data.message) {
+                setBuyerAiStatus(data.message);
+              } else if (data.type === "final") {
+                setBuyerAiMessages(prev => [...prev, { role: "agent", text: data.text, id: `agent-${newMsgId}` }]);
+                setBuyerAiStatus("");
+              }
+            } catch (e) {
+              // Ignore invalid JSON chunks
+            }
+          }
+        }
+        if (done) break;
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.log('Request aborted by user');
+        return;
+      }
+      console.error("Failed buyer AI assistant search:", err);
+      setBuyerAiMessages(prev => [...prev, {
+        role: "agent",
+        text: `Sorry, there was an issue communicating with SERA AI. Please try again.`,
+        id: `agent-err-${newMsgId}`
+      }]);
+    } finally {
+      setBuyerAiStatus("");
+      setAbortController(null);
+    }
   };
 
   const formatPrice = (priceStr) => {
@@ -162,7 +271,7 @@ const handleAgentMsg = () => {
     }
     return parseFloat(s.replace(/[^0-9.]/g, "")) || 29.00;
   };
-  
+
   const formatPriceStr = (num, originalStr) => {
     const s = String(originalStr || "");
     if (s.toLowerCase().includes("rp")) {
@@ -180,13 +289,13 @@ const handleAgentMsg = () => {
   return (
     <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative", background: t.bg }}>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", height: "100vh", position: "relative" }}>
-      <div style={{ height: 60, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 48px", background: isDarkMode ? "#0f0f10" : "#fff", borderBottom: `1px solid ${isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}`, position: "sticky", top: 0, zIndex: 50 }}>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, margin: 0, fontWeight: 600, display: "flex", alignItems: "center" }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: isDarkMode ? "#c8b89a" : "#8b7355", letterSpacing: 0.5, fontFamily: "'DM Sans', sans-serif" }}>SERA</span>
-          <span style={{ fontSize: 11, color: isDarkMode ? "#6b6b75" : "#9ca3af", background: isDarkMode ? "#1a1a1e" : "#f3f4f6", padding: "2px 8px", borderRadius: 4, marginLeft: 8, fontFamily: "'DM Sans', sans-serif" }}>Discovery AI</span>
-        </h1>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* Dark/Light Toggle */}
+        <div style={{ height: 60, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 48px", background: isDarkMode ? "#0f0f10" : "#fff", borderBottom: `1px solid ${isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}`, position: "sticky", top: 0, zIndex: 50 }}>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, margin: 0, fontWeight: 600, display: "flex", alignItems: "center" }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: isDarkMode ? "#c8b89a" : "#8b7355", letterSpacing: 0.5, fontFamily: "'DM Sans', sans-serif" }}>SERA</span>
+            <span style={{ fontSize: 11, color: isDarkMode ? "#6b6b75" : "#9ca3af", background: isDarkMode ? "#1a1a1e" : "#f3f4f6", padding: "2px 8px", borderRadius: 4, marginLeft: 8, fontFamily: "'DM Sans', sans-serif" }}>Discovery AI</span>
+          </h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {/* Dark/Light Toggle */}
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               style={{
@@ -207,372 +316,381 @@ const handleAgentMsg = () => {
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
               )}
             </button>
-          
-          <button
-            onClick={() => setAppMode(appMode === "buyer" ? "seller" : "buyer")}
-            style={{
-              marginLeft: 12,
-              background: appMode === "buyer" ? (isDarkMode ? "#2a2a2e" : "#e5e7eb") : (isDarkMode ? "#1a1a1e" : "#f3f4f6"),
-              border: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}`,
-              color: appMode === "buyer" ? t.text : t.subtext,
-              borderRadius: 20,
-              padding: "4px 14px",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              cursor: "pointer",
-              fontSize: 11,
-              fontWeight: 600,
-              fontFamily: "'DM Sans', sans-serif",
-              transition: "all 0.2s ease"
-            }}
-            title={`Current Mode: ${appMode === "buyer" ? "Buyer Discovery" : "Seller Studio"}. Click to switch.`}
-          >
-            {appMode === "buyer" ? (
-              <>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ transition: "all 0.3s ease" }}>
-                  <rect x="2" y="6" width="20" height="12" rx="6"></rect>
-                  <circle cx="8" cy="12" r="4" fill="currentColor"></circle>
-                </svg>
-                <span style={{ color: t.text, fontWeight: 700 }}>Buyer</span>
-              </>
-            ) : (
-              <>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ transition: "all 0.3s ease" }}>
-                  <rect x="2" y="6" width="20" height="12" rx="6"></rect>
-                  <circle cx="16" cy="12" r="4" fill="currentColor"></circle>
-                </svg>
-                <span style={{ color: t.text, fontWeight: 700 }}>Studio</span>
-              </>
-            )}
-          </button>
 
-          {!chatOpen && (
-            <button onClick={() => setChatOpen(true)} style={{
-              marginLeft: 8, background: isDarkMode ? "#1a1a1e" : "#f3f4f6", border: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}`,
-              borderRadius: 6, padding: "4px 10px", cursor: "pointer",
-              color: isDarkMode ? "#c8b89a" : "#82693f", fontSize: 11, fontFamily: "'DM Sans', sans-serif",
-              display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s",
-              fontWeight: 600
-            }}>
-              <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-              </svg>
-              Open SERA
+            <button
+              onClick={() => setAppMode(appMode === "buyer" ? "seller" : "buyer")}
+              style={{
+                marginLeft: 12,
+                background: appMode === "buyer" ? (isDarkMode ? "#2a2a2e" : "#e5e7eb") : (isDarkMode ? "#1a1a1e" : "#f3f4f6"),
+                border: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}`,
+                color: appMode === "buyer" ? t.text : t.subtext,
+                borderRadius: 20,
+                padding: "4px 14px",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+                fontSize: 11,
+                fontWeight: 600,
+                fontFamily: "'DM Sans', sans-serif",
+                transition: "all 0.2s ease"
+              }}
+              title={`Current Mode: ${appMode === "buyer" ? "Buyer Discovery" : "Seller Studio"}. Click to switch.`}
+            >
+              {appMode === "buyer" ? (
+                <>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ transition: "all 0.3s ease" }}>
+                    <rect x="2" y="6" width="20" height="12" rx="6"></rect>
+                    <circle cx="8" cy="12" r="4" fill="currentColor"></circle>
+                  </svg>
+                  <span style={{ color: t.text, fontWeight: 700 }}>Buyer</span>
+                </>
+              ) : (
+                <>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ transition: "all 0.3s ease" }}>
+                    <rect x="2" y="6" width="20" height="12" rx="6"></rect>
+                    <circle cx="16" cy="12" r="4" fill="currentColor"></circle>
+                  </svg>
+                  <span style={{ color: t.text, fontWeight: 700 }}>Studio</span>
+                </>
+              )}
             </button>
-          )}
+
+            {!chatOpen && (
+              <button onClick={() => setChatOpen(true)} style={{
+                marginLeft: 8, background: isDarkMode ? "#1a1a1e" : "#f3f4f6", border: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}`,
+                borderRadius: 6, padding: "4px 10px", cursor: "pointer",
+                color: isDarkMode ? "#c8b89a" : "#82693f", fontSize: 11, fontFamily: "'DM Sans', sans-serif",
+                display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s",
+                fontWeight: 600
+              }}>
+                <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                </svg>
+                Open SERA
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-            <div style={{ width: "100%", marginBottom: 56 }}>
-              {/* Image Banner */}
-              <div style={{ width: "100%", background: isDarkMode ? "#0f0f10" : "#fff", borderBottom: `1px solid ${isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
-                <img src="/buyer-banner.jpg" alt="Start Shopping Powered by AI" style={{ width: "100%", maxHeight: "450px", objectFit: "cover", display: "block", margin: "0 auto" }} />
+        <div style={{ width: "100%", marginBottom: 56 }}>
+          {/* Image Banner */}
+          <div style={{ width: "100%", background: isDarkMode ? "#0f0f10" : "#fff", borderBottom: `1px solid ${isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
+            <img src="/buyer-banner.jpg" alt="Start Shopping Powered by AI" style={{ width: "100%", maxHeight: "450px", objectFit: "cover", display: "block", margin: "0 auto" }} />
+          </div>
+        </div>
+        {/* Buyer Mode Restricted Content Area */}
+        <div style={{ padding: "0 48px", width: "100%", margin: "0 auto" }}>
+          {/* Category Filter Tabs */}
+          <div style={{ display: "flex", gap: 12, marginBottom: 40, overflowX: "auto", paddingBottom: 12, WebkitOverflowScrolling: "touch" }}>
+            {["all", "Modern Lifestyle", "Artisanal Coffee", "Creator Gadgets", "Organic Skincare"].map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategoryFilter(cat)}
+                style={{
+                  background: selectedCategoryFilter === cat ? (isDarkMode ? "#c8b89a" : "#8b7355") : (isDarkMode ? "#1a1a1e" : "#f3f4f6"),
+                  color: selectedCategoryFilter === cat ? (isDarkMode ? "#0f0f10" : "#ffffff") : (isDarkMode ? "#ffffff" : "#111827"),
+                  border: `1px solid ${selectedCategoryFilter === cat ? "transparent" : (isDarkMode ? "#2a2a2e" : "#e5e7eb")}`,
+                  borderRadius: 100,
+                  padding: "10px 24px",
+                  fontSize: 14,
+                  fontWeight: selectedCategoryFilter === cat ? 700 : 500,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap"
+                }}
+                onMouseEnter={(e) => { if (selectedCategoryFilter !== cat) e.currentTarget.style.background = isDarkMode ? "#2a2a2e" : "#e5e7eb" }}
+                onMouseLeave={(e) => { if (selectedCategoryFilter !== cat) e.currentTarget.style.background = isDarkMode ? "#1a1a1e" : "#f3f4f6" }}
+              >
+                {cat === "all" ? "All Curated Ecosystems" : cat}
+              </button>
+            ))}
+          </div>
+          {/* 2. Top Curated Stores Section */}
+          <div style={{ marginBottom: 56 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+              <div>
+                <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 700, color: t.text, marginBottom: 4 }}>
+                  Top Curated Stores
+                </h2>
+                <p style={{ color: t.subtext, fontSize: 13 }}>
+                  Discover autonomous AI-powered brands backed by verified reputation and trust indicators.
+                </p>
               </div>
+              <span style={{ fontSize: 12, color: "#c8b89a", fontWeight: 600, background: isDarkMode ? "#1a1a1e" : "#f3f4f6", padding: "4px 12px", borderRadius: 20, border: `1px solid ${t.border}` }}>
+                AI Verified Ecosystem
+              </span>
             </div>
-            {/* Buyer Mode Restricted Content Area */}
-            <div style={{ padding: "0 48px", width: "100%", margin: "0 auto" }}>
-              {/* Category Filter Tabs */}
-              <div style={{ display: "flex", gap: 12, marginBottom: 40, overflowX: "auto", paddingBottom: 12, WebkitOverflowScrolling: "touch" }}>
-                {["all", "Modern Lifestyle", "Artisanal Coffee", "Creator Gadgets", "Organic Skincare"].map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategoryFilter(cat)}
-                    style={{
-                      background: selectedCategoryFilter === cat ? (isDarkMode ? "#c8b89a" : "#8b7355") : (isDarkMode ? "#1a1a1e" : "#f3f4f6"),
-                      color: selectedCategoryFilter === cat ? (isDarkMode ? "#0f0f10" : "#ffffff") : (isDarkMode ? "#ffffff" : "#111827"),
-                      border: `1px solid ${selectedCategoryFilter === cat ? "transparent" : (isDarkMode ? "#2a2a2e" : "#e5e7eb")}`,
-                      borderRadius: 100,
-                      padding: "10px 24px",
-                      fontSize: 14,
-                      fontWeight: selectedCategoryFilter === cat ? 700 : 500,
-                      cursor: "pointer",
-                      whiteSpace: "nowrap"
-                    }}
-                    onMouseEnter={(e) => { if (selectedCategoryFilter !== cat) e.currentTarget.style.background = isDarkMode ? "#2a2a2e" : "#e5e7eb" }}
-                    onMouseLeave={(e) => { if (selectedCategoryFilter !== cat) e.currentTarget.style.background = isDarkMode ? "#1a1a1e" : "#f3f4f6" }}
-                  >
-                    {cat === "all" ? "All Curated Ecosystems" : cat}
-                  </button>
-                ))}
-              </div>
-              {/* 2. Top Curated Stores Section */}
-              <div style={{ marginBottom: 56 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-                  <div>
-                    <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 700, color: t.text, marginBottom: 4 }}>
-                      Top Curated Stores
-                    </h2>
-                    <p style={{ color: t.subtext, fontSize: 13 }}>
-                      Discover autonomous AI-powered brands backed by verified reputation and trust indicators.
-                    </p>
-                  </div>
-                  <span style={{ fontSize: 12, color: "#c8b89a", fontWeight: 600, background: isDarkMode ? "#1a1a1e" : "#f3f4f6", padding: "4px 12px", borderRadius: 20, border: `1px solid ${t.border}` }}>
-                     AI Verified Ecosystem
-                  </span>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 24 }}>
-                  {filteredStores.map(store => {
-                    const isFollowing = followedStores.has(store.id);
-                    return (
-                      <div
-                        key={store.id}
-                        onClick={() => setSelectedStorefront(store)}
-                        style={{
-                          position: "relative",
-                          aspectRatio: "3/4",
-                          borderRadius: 24,
-                          overflow: "hidden",
-                          cursor: "pointer",
-                          boxShadow: isDarkMode ? "none" : "0 12px 32px rgba(0,0,0,0.08)",
-                          border: `1px solid ${isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}`,
-                          transition: "transform 0.3s ease",
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                      >
-                        {/* Full Cover Image */}
-                        {store.cover ? (
-                          <img src={store.cover} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} onError={(e) => e.currentTarget.style.display = 'none'} />
-                        ) : (
-                          <div style={{ width: "100%", height: "100%", background: isDarkMode ? "#161618" : "#f9fafb", position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>
-                            ðŸ›ï¸
-                          </div>
-                        )}
-                        {/* Trust Badge Top Right */}
-                        <div style={{ position: "absolute", top: 16, right: 16, zIndex: 3 }}>
-                          <div style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(12px)", padding: "6px 12px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6, border: "1px solid rgba(255,255,255,0.1)" }}>
-                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />
-                            <span style={{ color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>{store.trustScore}</span>
-                          </div>
-                        </div>
-                        {/* Bottom Gradient Overlay & Content */}
-                        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 40%, transparent 100%)", zIndex: 1 }} />
-                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 24, zIndex: 2, display: "flex", flexDirection: "column" }}>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: "#c8b89a", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>{store.category}</span>
-                          <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: "#fff", marginBottom: 8, lineHeight: 1.1 }}>{store.name}</h3>
-                          <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, lineHeight: 1.5, marginBottom: 24, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{store.desc}</p>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>👥 {store.followers}</span>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); toggleFollowStore(store.id); }}
-                              style={{
-                                background: isFollowing ? "rgba(255,255,255,0.1)" : "#c8b89a",
-                                color: isFollowing ? "#fff" : "#0f0f10",
-                                border: isFollowing ? "1px solid rgba(255,255,255,0.2)" : "none",
-                                backdropFilter: isFollowing ? "blur(8px)" : "none",
-                                borderRadius: 100,
-                                padding: "8px 20px",
-                                fontSize: 12,
-                                fontWeight: 700,
-                                cursor: "pointer",
-                                transition: "all 0.2s ease"
-                              }}
-                            >
-                              {isFollowing ? "Following" : "Follow"}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              {/* Featured Video Campaigns */}
-              {(() => {
-                const allCampaigns = [];
-                [...CURATED_STORES, ...userStores].forEach(s => {
-                  const sData = s.storeData || s.customSchema?.storeData || s.schema?.storeData || {};
-                  const videos = sData.promoVideos && sData.promoVideos.length > 0
-                    ? sData.promoVideos
-                    : (sData.promoVideo ? [sData.promoVideo] : (s.promoVideo ? [s.promoVideo] : []));
-                  [...new Set(videos)].forEach((vidUrl, idx) => {
-                    allCampaigns.push({
-                      id: `${s.id}-promo-${idx}`,
-                      store: s,
-                      videoUrl: vidUrl
-                    });
-                  });
-                });
-                if (allCampaigns.length === 0) return null;
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 24 }}>
+              {filteredStores.map(store => {
+                const isFollowing = followedStores.has(store.id);
                 return (
-                  <div style={{ marginBottom: 40 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-                      <div>
-                        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 700, color: t.text, marginBottom: 4 }}>
-                          Featured Video Campaigns
-                        </h2>
-                        <p style={{ color: t.subtext, fontSize: 13 }}>
-                          Exclusive promotions and flash sales powered by Veo AI.
-                        </p>
+                  <div
+                    key={store.id}
+                    onClick={() => setSelectedStorefront(store)}
+                    style={{
+                      position: "relative",
+                      aspectRatio: "3/4",
+                      borderRadius: 24,
+                      overflow: "hidden",
+                      cursor: "pointer",
+                      boxShadow: isDarkMode ? "none" : "0 12px 32px rgba(0,0,0,0.08)",
+                      border: `1px solid ${isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}`,
+                      transition: "transform 0.3s ease",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.02)"}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                  >
+                    {/* Full Cover Image */}
+                    {store.cover ? (
+                      <img src={store.cover} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} onError={(e) => e.currentTarget.style.display = 'none'} />
+                    ) : (
+                      <div style={{ width: "100%", height: "100%", background: isDarkMode ? "#161618" : "#f9fafb", position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>
+                        ðŸ›ï¸
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 800, background: "#ef4444", color: "#fff", padding: "4px 12px", borderRadius: 100, textTransform: "uppercase", letterSpacing: 1 }}>Live Now</span>
+                    )}
+                    {/* Trust Badge Top Right */}
+                    <div style={{ position: "absolute", top: 16, right: 16, zIndex: 3 }}>
+                      <div style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(12px)", padding: "6px 12px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6, border: "1px solid rgba(255,255,255,0.1)" }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />
+                        <span style={{ color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>{store.trustScore}</span>
+                      </div>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 24 }}>
-                      {allCampaigns.map(camp => (
-                        <div key={camp.id} onClick={() => {
-                          setActiveNav("home");
-                        }} style={{ cursor: "pointer", background: t.card, border: `1px solid ${t.border}`, borderRadius: 16, overflow: "hidden", position: "relative", aspectRatio: "9/16" }}>
-                          <video src={camp.videoUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 40%)" }} />
-                          <div style={{ position: "absolute", bottom: 20, left: 20, right: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-                            <div>
-                              <h3 style={{ color: "#fff", fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{getDisplayBrandName(camp.store)}</h3>
-                              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>Special Campaign</p>
-                            </div>
-                            <span style={{ color: "#4ade80", fontSize: 13, fontWeight: 700, background: "rgba(74,222,128,0.15)", padding: "6px 12px", borderRadius: 8, backdropFilter: "blur(4px)", border: "1px solid rgba(74,222,128,0.3)" }}>
-                              View Store
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                    {/* Bottom Gradient Overlay & Content */}
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 40%, transparent 100%)", zIndex: 1 }} />
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 24, zIndex: 2, display: "flex", flexDirection: "column" }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: "#c8b89a", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>{store.category}</span>
+                      <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, color: "#fff", marginBottom: 8, lineHeight: 1.1 }}>{store.name}</h3>
+                      <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, lineHeight: 1.5, marginBottom: 24, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{store.desc}</p>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>👥 {store.followers}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleFollowStore(store.id); }}
+                          style={{
+                            background: isFollowing ? "rgba(255,255,255,0.1)" : "#c8b89a",
+                            color: isFollowing ? "#fff" : "#0f0f10",
+                            border: isFollowing ? "1px solid rgba(255,255,255,0.2)" : "none",
+                            backdropFilter: isFollowing ? "blur(8px)" : "none",
+                            borderRadius: 100,
+                            padding: "8px 20px",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            transition: "all 0.2s ease"
+                          }}
+                        >
+                          {isFollowing ? "Following" : "Follow"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
-              })()}
-
-              {/* 3. Trending Products From Stores */}
-              <div>
+              })}
+            </div>
+          </div>
+          {/* Featured Video Campaigns */}
+          {(() => {
+            const allCampaigns = [];
+            [...CURATED_STORES, ...userStores].forEach(s => {
+              const sData = s.storeData || s.customSchema?.storeData || s.schema?.storeData || {};
+              const videos = sData.promoVideos && sData.promoVideos.length > 0
+                ? sData.promoVideos
+                : (sData.promoVideo ? [sData.promoVideo] : (s.promoVideo ? [s.promoVideo] : []));
+              [...new Set(videos)].forEach((vidUrl, idx) => {
+                allCampaigns.push({
+                  id: `${s.id}-promo-${idx}`,
+                  store: s,
+                  videoUrl: vidUrl
+                });
+              });
+            });
+            if (allCampaigns.length === 0) return null;
+            return (
+              <div style={{ marginBottom: 40 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
                   <div>
                     <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 700, color: t.text, marginBottom: 4 }}>
-                      Trending Products From Stores
+                      Featured Video Campaigns
                     </h2>
                     <p style={{ color: t.subtext, fontSize: 13 }}>
-                      Curated items directly promoted by our top AI storefronts.
+                      Exclusive promotions and flash sales powered by Veo AI.
                     </p>
                   </div>
-                  <span style={{ fontSize: 12, color: t.subtext }}>Updated in real-time</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, background: "#ef4444", color: "#fff", padding: "4px 12px", borderRadius: 100, textTransform: "uppercase", letterSpacing: 1 }}>Live Now</span>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
-                  {[...CURATED_STORES, ...userStores]
-                    .flatMap(s => ((s.customSchema || s.schema)?.layout?.find(l => l.type === "featured_products")?.props?.products || []).map(p => ({
-                      id: p.name,
-                      name: p.name,
-                      price: p.price,
-                      desc: p.description || p.desc,
-                      image: p.imageUrl || p.image,
-                      storeId: s.id,
-                      store: (s.customSchema || s.schema)?.metadata?.brand_identity || s.storeData?.title || s.name || "AI Store",
-                      aiTag: p.promo || "Trending",
-                      rating: 4.8,
-                      sales: 340 + Math.floor(Math.random() * 500)
-                    })))
-                    .filter(p => selectedCategoryFilter === "all" || [...CURATED_STORES, ...userStores].find(s => s.id === p.storeId)?.category === selectedCategoryFilter)
-                    .filter(p => !buyerSearchQuery || p.name.toLowerCase().includes(buyerSearchQuery.toLowerCase()) || p.store.toLowerCase().includes(buyerSearchQuery.toLowerCase()) || p.aiTag.toLowerCase().includes(buyerSearchQuery.toLowerCase()))
-                    .map(prod => (
-                      <div
-                        key={prod.id}
-                        onClick={() => {
-                          setSelectedProductDetail({
-                            name: prod.name,
-                            price: prod.price,
-                            desc: prod.desc || "Premium curated item directly promoted by our top AI storefronts. Crafted with precision and designed for the modern individual.",
-                            imageUrl: prod.image,
-                            promo: prod.aiTag,
-                            store: prod.store,
-                            rating: prod.rating,
-                            sales: prod.sales
-                          });
-                          setModalQty(1);
-                        }}
-                        style={{
-                          background: isDarkMode ? "#161618" : "#fff",
-                          border: `1px solid ${t.border}`,
-                          borderRadius: 16,
-                          overflow: "hidden",
-                          transition: "all 0.3s ease",
-                          display: "flex",
-                          flexDirection: "column",
-                          cursor: "pointer",
-                          boxShadow: isDarkMode ? "none" : "0 6px 18px rgba(0,0,0,0.03)"
-                        }}
-                      >
-                        <div style={{ height: 220, width: "100%", background: "#1a1a1e", position: "relative" }}>
-                          <img src={prod.image} alt={prod.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(200,184,154,0.9)", color: "#0f0f10", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, backdropFilter: "blur(4px)" }}>
-                            {prod.aiTag}
-                          </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 24 }}>
+                  {allCampaigns.map(camp => (
+                    <div key={camp.id} onClick={(e) => {
+                      e.stopPropagation();
+                      window.dispatchEvent(new CustomEvent('sera:openStore', { detail: { storeId: camp.store.id || camp.store.store_id || camp.store._id } }));
+                    }} style={{ cursor: "pointer", background: t.card, border: `1px solid ${t.border}`, borderRadius: 16, overflow: "hidden", position: "relative", aspectRatio: "9/16" }}>
+                      <video src={camp.videoUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 40%)" }} />
+                      <div style={{ position: "absolute", bottom: 20, left: 20, right: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                        <div>
+                          <h3 style={{ color: "#fff", fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{getDisplayBrandName(camp.store)}</h3>
+                          <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>Special Campaign</p>
                         </div>
-                        <div style={{ padding: "16px", display: "flex", flexDirection: "column", flex: 1 }}>
-                          <span style={{ fontSize: 11, color: t.subtext, marginBottom: 4, fontWeight: 600 }}>{prod.store}</span>
-                          <h4 style={{ fontSize: 15, fontWeight: 700, color: t.text, marginBottom: 4, lineHeight: 1.3 }}>{prod.name}</h4>
-                          <p style={{ fontSize: 12, color: t.subtext, marginBottom: 12, lineHeight: 1.4, flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{prod.desc}</p>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12, borderTop: `1px solid ${t.border}` }}>
-                            <span style={{ fontSize: 15, fontWeight: 800, color: "#c8b89a" }}>{prod.price}</span>
-                            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: t.subtext }}>
-                              <span>⭐ {prod.rating}</span>
-                              <span>•</span>
-                              <span>{prod.sales}</span>
-                            </div>
-                          </div>
-                        </div>
+                        <span style={{ color: "#ffffff", fontSize: 11, fontWeight: 700, background: "#ef4444", padding: "4px 10px", borderRadius: 6 }}>
+                          View Store
+                        </span>
                       </div>
-                    ))}
+                    </div>
+                  ))}
                 </div>
               </div>
-              {/* End of Buyer Mode Restricted Content Area */}
+            );
+          })()}
+
+          {/* 3. Trending Products From Stores */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+              <div>
+                <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 700, color: t.text, marginBottom: 4 }}>
+                  Trending Products From Stores
+                </h2>
+                <p style={{ color: t.subtext, fontSize: 13 }}>
+                  Curated items directly promoted by our top AI storefronts.
+                </p>
+              </div>
+              <span style={{ fontSize: 12, color: t.subtext }}>Updated in real-time</span>
             </div>
-            {/* FLOATING BOTTOM NAVIGATION DOCK (BUYER MODE) */}
-            <div style={{
-              position: "fixed",
-              bottom: 32,
-              left: chatOpen ? `calc((100vw - ${chatWidth}px) / 2)` : "50%",
-              transform: "translateX(-50%)",
-              background: isDarkMode ? "rgba(22, 22, 24, 0.85)" : "rgba(255, 255, 255, 0.85)",
-              backdropFilter: "blur(16px)",
-              border: `1px solid ${t.border}`,
-              borderRadius: 30,
-              padding: "10px 32px",
-              display: "flex",
-              alignItems: "center",
-              gap: 36,
-              boxShadow: isDarkMode ? "0 12px 40px rgba(0,0,0,0.6)" : "0 12px 40px rgba(0,0,0,0.12)",
-              zIndex: 50,
-              transition: "left 0.3s ease, background 0.3s ease"
-            }}>
-              {/* Explore / Discovery */}
-              <button style={{ background: "none", border: "none", color: "#c8b89a", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer" }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
-                </svg>
-                <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'DM Sans', sans-serif" }}>Explore</span>
-              </button>
-              {/* Saved Stores / Favorites */}
-              <button style={{ background: "none", border: "none", color: t.subtext, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color = t.text} onMouseLeave={e => e.currentTarget.style.color = t.subtext}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                </svg>
-                <span style={{ fontSize: 10, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>Saved</span>
-              </button>
-              {/* Cart / Keranjang */}
-              <button
-                onClick={() => setIsCartOpen(true)}
-                style={{ background: "none", border: "none", color: t.subtext, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", position: "relative", transition: "color 0.2s" }}
-                onMouseEnter={e => e.currentTarget.style.color = t.text}
-                onMouseLeave={e => e.currentTarget.style.color = t.subtext}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle>
-                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-                </svg>
-                {cart.length > 0 && (
-                  <span style={{ position: "absolute", top: -4, right: -6, background: "#c8b89a", color: "#0f0f10", fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {cart.reduce((sum, item) => sum + item.qty, 0)}
-                  </span>
-                )}
-                <span style={{ fontSize: 10, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>Cart</span>
-              </button>
-              {/* Profile / Profil */}
-              <button style={{ background: "none", border: "none", color: t.subtext, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color = t.text} onMouseLeave={e => e.currentTarget.style.color = t.subtext}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                <span style={{ fontSize: 10, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>Profile</span>
-              </button>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
+              {[...CURATED_STORES, ...userStores]
+                .flatMap(s => ((s.customSchema || s.schema)?.layout?.find(l => l.type === "featured_products")?.props?.products || []).map(p => ({
+                  id: p.name,
+                  name: p.name,
+                  price: p.price,
+                  desc: p.description || p.desc,
+                  image: p.imageUrl || p.image,
+                  storeId: s.id || s.store_id || s._id,
+                  store: (s.customSchema || s.schema)?.metadata?.brand_identity || s.storeData?.title || s.name || "AI Store",
+                  aiTag: p.promo || "Trending",
+                  rating: 4.8,
+                  sales: 340 + (((p.id || p.name || "A").charCodeAt(0) * 43) % 500)
+                })))
+                .filter(p => selectedCategoryFilter === "all" || [...CURATED_STORES, ...userStores].find(s => s.id === p.storeId)?.category === selectedCategoryFilter)
+                .filter(p => !buyerSearchQuery || p.name.toLowerCase().includes(buyerSearchQuery.toLowerCase()) || p.store.toLowerCase().includes(buyerSearchQuery.toLowerCase()) || p.aiTag.toLowerCase().includes(buyerSearchQuery.toLowerCase()))
+                .map(prod => (
+                  <div
+                    key={prod.id}
+                    onClick={() => {
+                      setSelectedProductDetail({
+                        name: prod.name,
+                        price: prod.price,
+                        desc: prod.desc || "Premium curated item directly promoted by our top AI storefronts. Crafted with precision and designed for the modern individual.",
+                        imageUrl: prod.image,
+                        promo: prod.aiTag,
+                        store: prod.store,
+                        rating: prod.rating,
+                        sales: prod.sales
+                      });
+                      setModalQty(1);
+                    }}
+                    style={{
+                      background: isDarkMode ? "#161618" : "#fff",
+                      border: `1px solid ${t.border}`,
+                      borderRadius: 16,
+                      overflow: "hidden",
+                      transition: "all 0.3s ease",
+                      display: "flex",
+                      flexDirection: "column",
+                      cursor: "pointer",
+                      boxShadow: isDarkMode ? "none" : "0 6px 18px rgba(0,0,0,0.03)"
+                    }}
+                  >
+                    <div style={{ height: 220, width: "100%", background: "#1a1a1e", position: "relative" }}>
+                      <img src={prod.image} alt={prod.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(200,184,154,0.9)", color: "#0f0f10", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, backdropFilter: "blur(4px)" }}>
+                        {prod.aiTag}
+                      </div>
+                    </div>
+                    <div style={{ padding: "16px", display: "flex", flexDirection: "column", flex: 1 }}>
+                      <span 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.dispatchEvent(new CustomEvent('sera:openStore', { detail: { storeId: prod.storeId } }));
+                        }}
+                        style={{ fontSize: 11, color: "#c8b89a", marginBottom: 4, fontWeight: 700, cursor: "pointer" }}
+                      >
+                        View Store
+                      </span>
+                      <h4 style={{ fontSize: 15, fontWeight: 700, color: t.text, marginBottom: 4, lineHeight: 1.3 }}>{prod.name}</h4>
+                      <p style={{ fontSize: 12, color: t.subtext, marginBottom: 12, lineHeight: 1.4, flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{prod.desc}</p>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12, borderTop: `1px solid ${t.border}` }}>
+                        <span style={{ fontSize: 15, fontWeight: 800, color: "#c8b89a" }}>{prod.price}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: t.subtext }}>
+                          <span>⭐ {prod.rating}</span>
+                          <span>•</span>
+                          <span>{prod.sales}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
             </div>
-          
+          </div>
+          {/* End of Buyer Mode Restricted Content Area */}
+        </div>
+        {/* FLOATING BOTTOM NAVIGATION DOCK (BUYER MODE) */}
+        <div style={{
+          position: "fixed",
+          bottom: 32,
+          left: chatOpen ? `calc((100vw - ${chatWidth}px) / 2)` : "50%",
+          transform: "translateX(-50%)",
+          background: isDarkMode ? "rgba(22, 22, 24, 0.85)" : "rgba(255, 255, 255, 0.85)",
+          backdropFilter: "blur(16px)",
+          border: `1px solid ${t.border}`,
+          borderRadius: 30,
+          padding: "10px 32px",
+          display: "flex",
+          alignItems: "center",
+          gap: 36,
+          boxShadow: isDarkMode ? "0 12px 40px rgba(0,0,0,0.6)" : "0 12px 40px rgba(0,0,0,0.12)",
+          zIndex: 50,
+          transition: "left 0.3s ease, background 0.3s ease"
+        }}>
+          {/* Explore / Discovery */}
+          <button style={{ background: "none", border: "none", color: "#c8b89a", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+            </svg>
+            <span style={{ fontSize: 10, fontWeight: 700, fontFamily: "'DM Sans', sans-serif" }}>Explore</span>
+          </button>
+          {/* Saved Stores / Favorites */}
+          <button style={{ background: "none", border: "none", color: t.subtext, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color = t.text} onMouseLeave={e => e.currentTarget.style.color = t.subtext}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span style={{ fontSize: 10, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>Saved</span>
+          </button>
+          {/* Cart / Keranjang */}
+          <button
+            onClick={() => setIsCartOpen(true)}
+            style={{ background: "none", border: "none", color: t.subtext, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", position: "relative", transition: "color 0.2s" }}
+            onMouseEnter={e => e.currentTarget.style.color = t.text}
+            onMouseLeave={e => e.currentTarget.style.color = t.subtext}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+            </svg>
+            {cart.length > 0 && (
+              <span style={{ position: "absolute", top: -4, right: -6, background: "#c8b89a", color: "#0f0f10", fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {cart.reduce((sum, item) => sum + item.qty, 0)}
+              </span>
+            )}
+            <span style={{ fontSize: 10, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>Cart</span>
+          </button>
+          {/* Profile / Profil */}
+          <button style={{ background: "none", border: "none", color: t.subtext, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color = t.text} onMouseLeave={e => e.currentTarget.style.color = t.subtext}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span style={{ fontSize: 10, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>Profile</span>
+          </button>
+        </div>
+
       </div>
 
       {/* RIGHT AI ASSISTANT PANEL (BUYER MODE) */}
@@ -634,56 +752,127 @@ const handleAgentMsg = () => {
               </button>
             </div>
           </div>
-          {/* AI Live Status Banner */}
-          {buyerAiStatus && (
-            <div style={{ padding: "10px 20px", background: "#1e1e22", borderBottom: `1px solid ${t.border}`, display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 14, height: 14, border: "2px solid #c8b89a", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-              <span style={{ fontSize: 12, color: "#c8b89a", fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>{buyerAiStatus}</span>
-            </div>
-          )}
+          {/* AI Live Status Banner removed from header */}
           {/* Messages Stream */}
           <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: 16 }}>
-            {buyerAiMessages.map(m => (
-              <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: m.role === "user" ? "flex-end" : "flex-start" }}>
+            {buyerAiMessages.map((m, i) => (
+              m.role === "user" ? (
+                <div key={m.id} style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <div style={{
+                    maxWidth: "80%",
+                    padding: "10px 16px",
+                    borderRadius: "16px 16px 4px 16px",
+                    background: "#c8b89a",
+                    color: "#0f0f10",
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                    fontFamily: "'DM Sans', sans-serif"
+                  }}>
+                    {m.text}
+                  </div>
+                </div>
+              ) : (
+                <div key={m.id} style={{ width: "100%", paddingLeft: 4 }}>
+                  <SeraAgentMessage
+                    message={{
+                      state: m.text?.trim() ? "complete" : (m.events?.length > 0 ? "executing" : "planning"),
+                      isStreaming: !m.text?.trim(),
+                      milestones: m.milestones || [],
+                      events: m.events || [],
+                      runtime: m.events || [],
+                      cognition: m.events || [],
+                      content: m.text || "",
+                      summary: null,
+                      tools: [],
+                      actions: [],
+                      planData: null,
+                      chat: null,
+                    }}
+                  />
+                </div>
+              )
+            ))}
+            
+            {/* AI Live Status Chat Bubble */}
+            {buyerAiStatus && (
+              <div style={{ display: "flex", justifyContent: "flex-start" }}>
                 <div style={{
-                  maxWidth: "85%",
-                  padding: "12px 16px",
-                  borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                  background: m.role === "user" ? "#c8b89a" : (isDarkMode ? "#161618" : "#fff"),
-                  color: m.role === "user" ? "#0f0f10" : t.text,
-                  border: `1px solid ${m.role === "user" ? "transparent" : t.border}`,
-                  fontSize: 13,
-                  lineHeight: 1.5,
-                  boxShadow: isDarkMode ? "none" : "0 4px 12px rgba(0,0,0,0.03)"
+                  padding: "4px 8px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  maxWidth: "80%",
+                  opacity: 0.8
                 }}>
-                  {m.text}
+                  <div style={{ width: 16, height: 16, border: "2px solid #c8b89a", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                  <span style={{ fontSize: 13, color: isDarkMode ? "#c8b89a" : "#8b7355", fontWeight: 600, fontFamily: "'DM Sans', sans-serif", lineHeight: 1.5 }}>
+                    {buyerAiStatus}
+                  </span>
                 </div>
               </div>
-            ))}
+            )}
+            
+            <div ref={chatEndRef} />
           </div>
           {/* Input Area */}
           <div style={{ padding: "16px 20px", borderTop: `1px solid ${t.border}`, background: isDarkMode ? "#111113" : "#fff" }}>
             <form onSubmit={handleBuyerAiSubmit} style={{ display: "flex", gap: 10, background: isDarkMode ? "#161618" : "#f9fafb", border: `1px solid ${t.border}`, borderRadius: 14, padding: "6px 6px 6px 16px", alignItems: "center" }}>
-              <input
+              <textarea
                 id="buyer-ai-query"
                 name="buyer-ai-query"
-                type="text"
                 value={buyerAiQuery}
-                onChange={(e) => setBuyerAiQuery(e.target.value)}
+                onChange={(e) => {
+                  setBuyerAiQuery(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (buyerAiQuery.trim() && !buyerAiStatus) {
+                      handleBuyerAiSubmit(e);
+                      e.target.style.height = 'auto';
+                    }
+                  }
+                }}
                 placeholder="Ask SERA..."
-                style={{ background: "transparent", border: "none", outline: "none", color: t.text, fontSize: 13, flex: 1 }}
+                style={{ background: "transparent", border: "none", outline: "none", color: t.text, fontSize: 13, flex: 1, resize: "none", height: 20, maxHeight: 120, fontFamily: "inherit", overflowY: "auto", padding: 0 }}
+                rows={1}
+                disabled={!!buyerAiStatus}
               />
-              <button type="submit" style={{ background: "#c8b89a", border: "none", borderRadius: 10, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", color: "#0f0f10", cursor: "pointer", flexShrink: 0, fontWeight: 700 }}>
-                <svg width="14" height="14" fill="none" stroke="#0f0f10" strokeWidth="3" viewBox="0 0 24 24">
-                  <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
-                </svg>
+              <button 
+                type={buyerAiStatus ? "button" : "submit"} 
+                onClick={buyerAiStatus ? handleAbort : undefined}
+                style={{ 
+                  background: buyerAiStatus ? (isDarkMode ? "#3f3f46" : "#e5e7eb") : "#c8b89a", 
+                  border: "none", 
+                  borderRadius: 10, 
+                  width: 32, 
+                  height: 32, 
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center", 
+                  color: buyerAiStatus ? (isDarkMode ? "#a1a1aa" : "#9ca3af") : "#0f0f10", 
+                  cursor: "pointer", 
+                  flexShrink: 0, 
+                  fontWeight: 700 
+                }}>
+                {buyerAiStatus ? (
+                  <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                    <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
+                  </svg>
+                )}
               </button>
             </form>
           </div>
         </div>
       )}
-      
-{selectedStorefront && (
+
+      {selectedStorefront && (
         <div style={{ position: "fixed", top: 0, bottom: 0, left: 0, right: chatOpen ? chatWidth : 0, background: isDarkMode ? "#0f0f10" : "#fff", zIndex: 180, overflowY: "auto", display: "flex", flexDirection: "column", animation: "fadeIn 0.3s ease", borderRight: chatOpen ? `1px solid ${t.border}` : "none" }}>
           {/* Top Bar / Back Navigation */}
           <div style={{ position: "sticky", top: 0, zIndex: 50, background: isDarkMode ? "rgba(15,15,16,0.9)" : "rgba(255,255,255,0.9)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${t.border}`, padding: "16px 40px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -693,7 +882,7 @@ const handleAgentMsg = () => {
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span style={{ fontSize: 12, color: "#4ade80", background: "rgba(74,222,128,0.1)", padding: "4px 12px", borderRadius: 20, border: "1px solid rgba(74,222,128,0.2)", fontWeight: 600 }}>
-                 Verified AI Brand • {selectedStorefront.trustScore} Trust
+                Verified AI Brand • {selectedStorefront.trustScore} Trust
               </span>
               <button onClick={() => { toggleFollowStore(selectedStorefront.id); showToast(followedStores.has(selectedStorefront.id) ? `Unfollowed ${selectedStorefront.name}` : `Following ${selectedStorefront.name}!`); }} style={{ background: followedStores.has(selectedStorefront.id) ? (isDarkMode ? "#2a2a2e" : "#e5e7eb") : "#c8b89a", color: followedStores.has(selectedStorefront.id) ? t.text : "#0f0f10", border: "none", borderRadius: 12, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                 {followedStores.has(selectedStorefront.id) ? "Following" : "Follow"}
@@ -978,7 +1167,7 @@ const handleAgentMsg = () => {
           </div>
         </div>
       )}
-      
-</div>
+
+    </div>
   );
 };
