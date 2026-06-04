@@ -1,4 +1,4 @@
-# SERA — Autonomous Commerce Operating System
+# SERA Autonomous Commerce Operating System
 
 <p align="center">
   <img src="public/sera-logo.png" width="140" alt="SERA Logo" />
@@ -395,11 +395,11 @@ SERA is evolving toward a fully autonomous commerce operating system.
 Future capabilities include:
 
 * Autonomous marketing execution
-* Multi-channel commerce automation
+* Multi channel commerce automation
 * Marketplace integrations
 * Social commerce workflows
-* Advanced multi-agent collaboration
-* AI-powered business operations at scale
+* Advanced multi agent collaboration
+* AI powered business operations at scale
 
 ---
 
