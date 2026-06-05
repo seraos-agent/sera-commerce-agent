@@ -363,14 +363,15 @@
         <div class="tech-badge" title="Google Cloud"><img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Google_Cloud_logo.svg" alt="Google Cloud" /></div>
         <div class="tech-badge" title="Gemini"><img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg" alt="Gemini" /></div>
         <div class="tech-badge" title="MongoDB"><img src="https://webimages.mongodb.com/_com_assets/cms/kuyjf3vea2hg34taa-horizontal_default_slate_blue.svg" alt="MongoDB" /></div>
-        <div class="tech-badge" title="Firebase"><img src="https://upload.wikimedia.org/wikipedia/commons/3/37/Firebase_Logo.svg" alt="Firebase" /></div>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-  const BACKEND_URL = 'http://localhost:3001'
+  const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:3001' 
+    : 'https://sera-backend-755895718608.us-central1.run.app';
 
   // ── Guest Session ──
   async function initGuestSession() {

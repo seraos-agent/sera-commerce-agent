@@ -131,17 +131,18 @@ const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT || 'sera-495721';
 async function testMongoConnection(uri) {
   const { MongoClient } = await import('mongodb');
   console.log("🩺 Running Hard Health Check on MongoDB Atlas...");
-  const client = new MongoClient(uri, { serverSelectionTimeoutMS: 5000 });
+  const client = new MongoClient(uri, { serverSelectionTimeoutMS: 15000 });
   try {
     await client.connect();
     await client.db('admin').command({ ping: 1 });
     healthState.mongo = 'connected';
     console.log("✅ [Health Check] MongoDB Atlas is CONNECTED.");
+    global.nativeMongoClient = client; // Keep alive for Native Bypass
   } catch (err) {
     healthState.mongo = 'failed';
     console.error("❌ [Health Check] MongoDB Atlas unavailable:", err.message);
     console.warn("⚠️ System will run in degraded mode using Local JSON Fallback.");
-  } finally {
+    // Close only on failure to avoid leaking
     await client.close();
   }
 }
@@ -152,15 +153,16 @@ let mcpTools = [];
 
 async function setupMCP() {
   const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/sera';
+  console.log(`[DEBUG] setupMCP called. MONGODB_URI starts with: ${mongoUri.substring(0, 25)}...`);
 
   // Hard Health Check First
   await testMongoConnection(mongoUri);
 
   try {
     const transport = new StdioClientTransport({
-      command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
-      args: ['-y', 'mongodb-mcp-server', mongoUri],
-      env: { ...process.env, MONGODB_CONNECTION_STRING: mongoUri }
+        command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
+        args: ['-y', 'mongodb-mcp-server@latest'],
+        env: { ...process.env, MDB_MCP_CONNECTION_STRING: mongoUri }
     });
     mcpClient = new Client({ name: 'sera-backend-client', version: '1.0.0' }, { capabilities: {} });
     await mcpClient.connect(transport);
@@ -193,7 +195,7 @@ async function storeMemory(collection, document) {
     });
     console.log(`Ã°Å¸Â§Â  Memory Stored: ${collection}`);
   } catch (err) {
-    console.error(`Ã¢ÂÅ’ Failed to store memory:`, err.message);
+    console.error(`Ã¢Â Å’ Failed to store memory:`, err.message);
   }
 }
 
@@ -221,7 +223,7 @@ function runLocalMock(possibleNames, args) {
       return localDelete(collection, args.filter || args.query);
     }
   } catch (err) {
-    console.error(`Ã¢ÂÅ’ Local Mock execution error on [${collection}]:`, err.message);
+    console.error(`Ã¢Â Å’ Local Mock execution error on [${collection}]:`, err.message);
   }
   return { success: true };
 }
@@ -230,8 +232,52 @@ function runLocalMock(possibleNames, args) {
 async function callFlexibleMcpTool(possibleNames, args) {
   const collection = args?.collection || 'system';
 
+  // --- NATIVE MONGODB BYPASS FOR MAXIMUM STABILITY ---
+  if (healthState.mongo === 'connected' && global.nativeMongoClient) {
+    try {
+      console.log(`⚡ [Native MongoDB] Bypassing MCP for Tool: "${possibleNames[0]}" | Collection: "${collection}"`);
+      const db = global.nativeMongoClient.db('sera');
+      const coll = db.collection(collection);
+      
+      const isFind = possibleNames.some(n => n.includes('find') || n.includes('get'));
+      const isInsert = possibleNames.some(n => n.includes('insert') || n.includes('create'));
+      const isUpdate = possibleNames.some(n => n.includes('update'));
+      const isDelete = possibleNames.some(n => n.includes('delete'));
+
+      if (isFind) {
+        const query = args.filter || args.query || {};
+        const limit = args.limit || 0;
+        const docs = await coll.find(query).limit(limit).toArray();
+        return { success: true, data: docs };
+      }
+      if (isInsert) {
+        if (args.document) {
+          const res = await coll.insertOne(args.document);
+          return { success: true, data: { insertedId: res.insertedId, ...args.document } };
+        } else if (args.documents) {
+          const res = await coll.insertMany(args.documents);
+          return { success: true, data: { insertedCount: res.insertedCount } };
+        }
+      }
+      if (isUpdate) {
+        const query = args.filter || args.query || {};
+        const res = await coll.updateMany(query, args.update);
+        return { success: true, data: { modifiedCount: res.modifiedCount } };
+      }
+      if (isDelete) {
+        const query = args.filter || args.query || {};
+        const res = await coll.deleteMany(query);
+        return { success: true, data: { deletedCount: res.deletedCount } };
+      }
+    } catch (err) {
+      console.error(`❌ [Native MongoDB] Action failed:`, err.message);
+      console.warn(`⚠️ Falling back to Local DB...`);
+      return runLocalMock(possibleNames, args);
+    }
+  }
+
   if (!mcpClient) {
-    console.warn(`Ã¢Å¡Â Ã¯Â¸Â [MongoDB MCP Offline] Falling back to Local DB for action on collection [${collection}]`);
+    console.warn(`⚠️ [MongoDB MCP Offline] Falling back to Local DB for action on collection [${collection}]`);
     return runLocalMock(possibleNames, args);
   }
 
@@ -268,7 +314,7 @@ async function callFlexibleMcpTool(possibleNames, args) {
     const result = await mcpClient.callTool({
       name: targetTool,
       arguments: mcpArgs
-    });
+    }, { timeout: 120000 });
     if (result.isError) {
       throw new Error(result.content?.[0]?.text || "MCP tool returned an error");
     }
@@ -570,10 +616,12 @@ app.post('/api/publish', async (req, res) => {
 
     await Promise.all([...productPromises, ...analyticsPromises]);
 
-    // Trigger async background embedding generation
+    // Trigger async background embedding generation (Disabled - Agent is handled by Python ADK)
+    /*
     generateEmbeddingsInBackground(productsDocs).catch(err => {
-      console.error("Ã¢ÂÅ’ Background embedding generation failed:", err.message);
+      console.error("Ã¢Â Å’ Background embedding generation failed:", err.message);
     });
+    */
 
     // Step 6: Return response
     return res.json({
@@ -1124,7 +1172,7 @@ app.post('/api/execute-task', async (req, res) => {
             http_status: httpStatus,
             retry_count: attempt,
             url: targetUrl,
-            proxy_url: `http://localhost:${port}/api/proxy-image?url=${encodeURIComponent(targetUrl)}`,
+            proxy_url: `${req.protocol}://${req.get('host')}/api/proxy-image?url=${encodeURIComponent(targetUrl)}`,
             itemId
           };
 
@@ -1252,8 +1300,8 @@ app.get('/', (req, res) => {
   });
 });
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
   console.log(`\n=========================================`);
-  console.log(`Ã°Å¸Å¡â‚¬ SERA Backend listening at http://localhost:${port}`);
+  console.log(`🚀 SERA Backend listening at http://0.0.0.0:${port}`);
   console.log(`=========================================\n`);
 });

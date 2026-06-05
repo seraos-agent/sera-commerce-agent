@@ -1,10 +1,10 @@
-FROM node:18-alpine
+FROM node:20-slim
 
 WORKDIR /app
 
 # Copy package files
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Copy server code
 COPY . .

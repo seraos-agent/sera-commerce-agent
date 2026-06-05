@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import SeraAgentMessage from '../../SeraAgentMessage';
 import { useStore } from '../../store/storeContext';
 import { CURATED_STORES } from '../../utils/constants';
-import { sendChat } from '../../lib/agentApi';
-
+import { sendChat, BACKEND_URL } from '../../lib/agentApi';
 export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
   const {
     state: {
@@ -149,7 +148,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
         setSelectedStorefront(found);
       } else {
         // Fallback: fetch from Node backend and open
-        fetch(`http://localhost:3001/api/stores?session_id=all`)
+        fetch(`${BACKEND_URL}/api/stores?session_id=all`)
           .then(r => r.json())
           .then(data => {
             const backendStores = data.stores || [];
@@ -555,8 +554,8 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
               {[...CURATED_STORES, ...userStores]
-                .flatMap(s => ((s.customSchema || s.schema)?.layout?.find(l => l.type === "featured_products")?.props?.products || []).map(p => ({
-                  id: p.name,
+                .flatMap(s => (s.storeData?.products || s.products || (s.customSchema || s.schema)?.layout?.find(l => l.type === "featured_products")?.props?.products || []).map(p => ({
+                  id: p.name || p.id,
                   name: p.name,
                   price: p.price,
                   desc: p.description || p.desc,
@@ -995,8 +994,8 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                   : (selectedStorefront.storeData || {})),
                 themeColor: selectedStorefront.isUserStore ? (selectedStorefront.customSchema.theme?.themeColor || "#c8b89a") : "#c8b89a",
                 products: selectedStorefront.isUserStore
-                  ? (selectedStorefront.customSchema.layout.find(s => s.type === "featured_products")?.props?.products || [])
-                  : (selectedStorefront.schema?.layout?.find(s => s.type === "featured_products")?.props?.products || []),
+                  ? (selectedStorefront.customSchema?.layout?.find(s => s.type === "featured_products")?.props?.products || [])
+                  : (selectedStorefront.storeData?.products || selectedStorefront.schema?.layout?.find(s => s.type === "featured_products")?.props?.products || []),
                 isDarkMode: isDarkMode,
                 onSelectProduct: (prod) => {
                   setSelectedProductDetail({
