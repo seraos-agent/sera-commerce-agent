@@ -1421,7 +1421,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                   if (section.type === 'featured_products' && section.props?.products) {
                     let changed = false;
                     const nextProds = section.props.products.map((p, idx) => {
-                      const match = data.state.results.find(r => r.itemId === prod_ && r.status === 'success');
+                      const match = data.state.results.find(r => r.itemId === `prod_${idx}` && r.status === 'success');
                       if (match && !p.verifiedUrl) { changed = true; const u = match.proxy_url || match.url; return { ...p, verifiedUrl: u, imageUrl: u, pendingUrl: u, stepId: null }; }
                       return p;
                     });
@@ -1430,7 +1430,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                   if (section.type === 'philosophy' && section.props?.items) {
                     let changed = false;
                     const nextItems = section.props.items.map((item, idx) => {
-                      const match = data.state.results.find(r => r.itemId === philo_ && r.status === 'success');
+                      const match = data.state.results.find(r => r.itemId === `philo_${idx}` && r.status === 'success');
                       if (match && !item.verifiedUrl) { changed = true; const u = match.proxy_url || match.url; return { ...item, verifiedUrl: u, imageUrl: u, pendingUrl: u, stepId: null }; }
                       return item;
                     });
