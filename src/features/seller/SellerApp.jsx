@@ -1705,6 +1705,10 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                       name: storeName,
                       store_name: storeName,
                       category: storeCategory,
+                      branding: {
+                        heroImage: heroImage || storeSchema.layout?.find(s => s.type === "hero")?.props?.heroImage || "",
+                        philosophy: storeSchema.layout?.find(s => s.type === "philosophy")?.props?.items || []
+                      },
                       products: productsList,
                       type: "seller"
                     };

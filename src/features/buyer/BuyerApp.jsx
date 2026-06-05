@@ -135,6 +135,15 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
     { label: "SEAMLESS CHECKOUT", sub: "Instant Fulfillment", imageUrl: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=640&h=360&q=80" }
   ];
   const getStorePhilosophy = (store) => {
+    if (store.isUserStore) {
+      return store.customSchema?.layout?.find(l => l.type === "philosophy")?.props?.items || INITIAL_PHILOSOPHY;
+    }
+    if (store.storeData?.branding?.philosophy && store.storeData.branding.philosophy.length > 0) {
+      return store.storeData.branding.philosophy;
+    }
+    if (store.branding?.philosophy && store.branding.philosophy.length > 0) {
+      return store.branding.philosophy;
+    }
     return INITIAL_PHILOSOPHY;
   };
   const checkout = () => {
@@ -190,10 +199,11 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                 name: match.store_name || match.name || "Unknown Store",
                 desc: match.description || match.desc || "An autonomous AI-curated store.",
                 category: match.category || "General",
+                cover: match.branding?.heroImage || match.branding?.cover || match.cover || null,
                 isUserStore: false,
                 storeData: {
                   ...match,
-                  products: match.products || []
+                  products: (match.products || []).filter(p => p.name && p.price && !p.name.includes("Generating") && !p.name.includes("..."))
                 }
               };
               setSelectedStorefront(normalizedStore);
@@ -579,7 +589,9 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
               {[...CURATED_STORES, ...userStores]
-                .flatMap(s => (s.storeData?.products || s.products || (s.customSchema || s.schema)?.layout?.find(l => l.type === "featured_products")?.props?.products || []).map(p => ({
+                .flatMap(s => (s.storeData?.products || s.products || (s.customSchema || s.schema)?.layout?.find(l => l.type === "featured_products")?.props?.products || [])
+                  .filter(p => p.name && p.price && !p.name.includes("Generating") && !p.name.includes("..."))
+                  .map(p => ({
                   id: p.name || p.id,
                   name: p.name,
                   price: p.price,
