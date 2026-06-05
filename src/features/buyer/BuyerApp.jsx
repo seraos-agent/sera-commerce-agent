@@ -61,6 +61,31 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
       document.body.style.userSelect = "auto";
     };
   }, [isResizing]);
+  useEffect(() => {
+    // Fetch all active stores for Buyer mode
+    fetch(`${BACKEND_URL}/api/stores?session_id=all`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.stores)) {
+          const formattedStores = data.stores.map(match => ({
+            ...match,
+            id: match.store_id || match._id || match.id,
+            name: match.store_name || match.name || "Unknown Store",
+            desc: match.description || match.desc || "An autonomous AI-curated store.",
+            category: match.category || "General",
+            isUserStore: false,
+            storeData: {
+              ...match,
+              products: match.products || []
+            }
+          }));
+          // Only replace if they are actually different, or just merge them
+          setUserStores(formattedStores);
+        }
+      })
+      .catch(err => console.error("Failed to fetch public stores:", err));
+  }, [setUserStores]);
+
   const [activeNav, setActiveNav] = useState("home");
   const getDisplayBrandName = (store) => store?.name || "Unknown Brand";
 
