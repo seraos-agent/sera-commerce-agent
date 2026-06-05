@@ -622,7 +622,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                     }}
                   >
                     <div style={{ height: 220, width: "100%", background: "#1a1a1e", position: "relative" }}>
-                      <img src={prod.image} alt={prod.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop"; }} />
+                      <img src={prod.image} alt={prod.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(200,184,154,0.9)", color: "#0f0f10", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, backdropFilter: "blur(4px)" }}>
                         {prod.aiTag}
                       </div>
@@ -1059,7 +1059,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
           <div style={{ background: isDarkMode ? "#161618" : "#fff", border: `1px solid ${t.border}`, borderRadius: 24, overflow: "hidden", width: "100%", maxWidth: 850, display: "flex", flexDirection: window.innerWidth < 768 ? "column" : "row", boxShadow: "0 24px 60px rgba(0,0,0,0.6)", maxHeight: "90vh" }}>
             {/* Left Image */}
             <div style={{ width: window.innerWidth < 768 ? "100%" : "50%", background: "#1a1a1e", position: "relative", minHeight: 300 }}>
-              <img src={selectedProductDetail.imageUrl} alt={selectedProductDetail.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop"; }} />
+              <img src={selectedProductDetail.imageUrl} alt={selectedProductDetail.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               {selectedProductDetail.promo && (
                 <div style={{ position: "absolute", top: 20, left: 20, background: "#c8b89a", color: "#0f0f10", fontSize: 11, fontWeight: 800, padding: "6px 12px", borderRadius: 8 }}>
                   {selectedProductDetail.promo}
@@ -1150,7 +1150,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
               ) : (
                 cart.map(item => (
                   <div key={item.id} style={{ display: "flex", gap: 16, alignItems: "center", background: isDarkMode ? "#111113" : "#f9fafb", padding: 16, borderRadius: 16, border: `1px solid ${t.border}` }}>
-                    <img src={item.imageUrl} alt={item.name} style={{ width: 70, height: 70, borderRadius: 12, objectFit: "cover", background: "#1a1a1e" }} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop"; }} />
+                    <img src={item.imageUrl} alt={item.name} style={{ width: 70, height: 70, borderRadius: 12, objectFit: "cover", background: "#1a1a1e" }} />
                     <div style={{ flex: 1 }}>
                       <h4 style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 4 }}>{item.name}</h4>
                       <p style={{ fontSize: 12, color: t.subtext, marginBottom: 8 }}>{item.store} • Qty: {item.qty}</p>

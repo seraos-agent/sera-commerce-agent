@@ -160,12 +160,7 @@ export const SECTION_REGISTRY = {
                         alt={p.name}
                         style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, opacity: p.verifiedUrl ? 1 : 0, transition: "opacity 0.5s ease-in" }}
                         onLoad={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.display = "block"; }}
-                        onError={e => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop";
-                          e.currentTarget.style.opacity = 1;
-                          e.currentTarget.style.display = "block";
-                        }}
+                        onError={e => { e.currentTarget.style.display = "none"; }}
                       />
                     )}
                     {p.promo && <div style={{ position: "absolute", top: 12, left: 12, background: props.themeColor || "rgba(200,184,154,0.9)", color: "#000", fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 10, zIndex: 2, backdropFilter: "blur(4px)" }}>{p.promo}</div>}
@@ -200,7 +195,7 @@ export const SECTION_REGISTRY = {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 20 }}>
               {((props.products && props.products.length > 0) ? props.products : (props.isBuilding ? Array(3).fill({ name: "Generating...", price: "..." }) : [])).slice(0, 3).map((p, i) => (
                 <div key={i} style={{ gridColumn: i === 0 ? "span 8" : "span 4", height: i === 0 ? 600 : 290, position: "relative", overflow: "hidden", borderRadius: 4, backgroundColor: t.surface.secondary, transition: "background-color 0.3s ease" }}>
-                  <img src={p.imageUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={p.name} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop"; }} />
+                  <img src={p.imageUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt={p.name} />
                   <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.7), transparent)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: 30 }}>
                     <h3 style={{ color: "#fff", fontSize: i === 0 ? 32 : 18 }}>{p.name}</h3>
                     <p style={{ color: props.themeColor, fontWeight: 600, marginTop: 5 }}>{p.price}</p>
@@ -229,7 +224,7 @@ export const SECTION_REGISTRY = {
                 {doubledItems.map((v, i) => (
                   <div key={i} onClick={() => props.onSelectPhilosophy && props.onSelectPhilosophy(v)} style={{ flex: "0 0 350px", height: 450, position: "relative", borderRadius: 24, overflow: "hidden", cursor: "pointer", ...(v.verifiedUrl ? { backgroundColor: t.surface.secondary } : { backgroundImage: t.surface.skeleton, backgroundSize: "200% 100%", animation: "shimmer 1.8s infinite linear" }), transition: "background-color 0.3s ease" }}>
                     {!v.verifiedUrl && <ImageLoadingPlaceholder />}
-                    {v.imageUrl && <img key={`${v.imageUrl}-${v.verifiedUrl ? 'verified' : 'pending'}`} src={v.imageUrl} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, opacity: v.verifiedUrl ? 1 : 0, transition: "opacity 0.5s ease-in" }} onLoad={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.display = "block"; }} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = "https://images.unsplash.com/photo-1618365908648-e71bd5716cba?w=600&h=600&fit=crop"; e.currentTarget.style.opacity = 1; e.currentTarget.style.display = "block"; }} />}
+                    {v.imageUrl && <img key={`${v.imageUrl}-${v.verifiedUrl ? 'verified' : 'pending'}`} src={v.imageUrl} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, opacity: v.verifiedUrl ? 1 : 0, transition: "opacity 0.5s ease-in" }} onLoad={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.display = "block"; }} onError={e => { e.currentTarget.style.display = "none"; }} />}
                     <div style={{ position: "absolute", inset: 0, padding: 40, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)", transition: "background 0.3s ease" }}>
                       <h4 style={{ fontSize: 12, fontWeight: 800, color: props.themeColor || "#fff", letterSpacing: 4, textTransform: "uppercase", marginBottom: 12, transition: "color 0.3s ease" }}>{v.label || v.title}</h4>
                       <p style={{ fontSize: 15, color: "rgba(255,255,255,0.9)", lineHeight: 1.6, fontWeight: 300, display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden", transition: "color 0.3s ease" }}>{v.sub || v.body}</p>
