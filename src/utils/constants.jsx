@@ -1,5 +1,18 @@
 import React from 'react';
 
+export const getSessionId = () => {
+  let sid = localStorage.getItem('sera_session_id');
+  let expiry = localStorage.getItem('sera_session_expiry');
+  const now = Date.now();
+  
+  if (!sid || !expiry || now > parseInt(expiry)) {
+    sid = 'guest_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('sera_session_id', sid);
+    localStorage.setItem('sera_session_expiry', (now + 24 * 60 * 60 * 1000).toString());
+  }
+  return sid;
+};
+
 export const sanitizePrompt = (p) => {
   if (!p) return "product";
   return String(p)
@@ -111,6 +124,8 @@ export function normalizeAgentParams(action, raw) {
   if (action === "change_product_desc") {
     if (p.desc == null && p.description != null) p.desc = p.description;
     if (p.desc == null && p.newDescription != null) p.desc = p.newDescription;
+    if (p.desc == null && p.new_desc != null) p.desc = p.new_desc;
+    if (p.desc == null && p.newDesc != null) p.desc = p.newDesc;
   }
   if (action === "change_product_name") {
     if (p.newName == null && p.new_product_name != null) p.newName = p.new_product_name;
@@ -179,7 +194,7 @@ export function isStoreMutationAction(action, rawParams) {
   if (action === "change_price") return !!(p.productName && p.newPrice);
   if (action === "change_product_promo") return !!p.productName;
   if (action === "change_product_image") return !!p.productName;
-  if (action === "change_product_desc") return !!(p.productName && (p.desc || p.description));
+  if (action === "change_product_desc") return !!((p.productName || p.name || p.product || p.target) && (p.desc || p.description || p.newDesc || p.newDescription || p.new_desc || p.text));
   if (action === "change_product_name") return !!(p.productName && p.newName);
   if (action === "remove_product") return !!p.productName;
   if (action === "change_theme_color") return !!p.color;

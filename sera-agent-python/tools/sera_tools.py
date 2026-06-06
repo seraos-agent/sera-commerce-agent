@@ -24,7 +24,8 @@ def save_base64_image(base64_str: str, asset_id: str) -> str:
         with open(file_path, "wb") as f:
             f.write(base64.b64decode(encoded))
             
-        return f"http://127.0.0.1:8000/assets/{asset_id}.{ext}"
+        public_url = os.environ.get("PUBLIC_URL", "http://127.0.0.1:8000")
+        return f"{public_url}/assets/{asset_id}.{ext}"
     except Exception as e:
         logger.error(f"Failed to save image {asset_id}: {e}")
         return base64_str
@@ -236,7 +237,8 @@ async def generate_store_assets(schema: dict, progress_queue=None) -> dict:
         hero_prompt = props.get("heroImagePrompt")
         if not hero_prompt and props.get("title"):
             hero_prompt = f"{props.get('title')} luxury lifestyle photography, cinematic lighting"
-        if hero_prompt:
+        # Skip if heroImage already exists
+        if hero_prompt and not props.get("heroImage"):
             # Force safety suffix to ensure header image passes Vertex AI filters
             safe_hero_prompt = f"{hero_prompt}, elegant abstract aesthetic, safe, empty, no people, no faces, clean architectural design"
             tasks.append(("hero_bg", hero_sec, safe_hero_prompt, "16:9", "Header Background Phase"))
@@ -251,6 +253,9 @@ async def generate_store_assets(schema: dict, progress_queue=None) -> dict:
     if prod_sec:
         products = prod_sec.setdefault("props", {}).setdefault("products", [])
         for idx, prod in enumerate(products):
+            # Skip if image already exists
+            if prod.get("imageUrl") or prod.get("verifiedUrl") or prod.get("pendingUrl"):
+                continue
             prompt = prod.get("imagePrompt") or prod.get("name")
             tasks.append((f"prod_{idx}", prod, prompt, "1:1", "Product Images Phase"))
             
@@ -264,6 +269,9 @@ async def generate_store_assets(schema: dict, progress_queue=None) -> dict:
     if philo_sec:
         items = philo_sec.setdefault("props", {}).setdefault("items", [])
         for idx, item in enumerate(items):
+            # Skip if image already exists
+            if item.get("imageUrl") or item.get("verifiedUrl") or item.get("pendingUrl"):
+                continue
             prompt = item.get("imagePrompt") or item.get("imgPrompt") or f"ethos representing {item.get('label', '')} cinematic photography"
             tasks.append((f"philo_{idx}", item, prompt, "1:1", "Philosophy Images Phase"))
             

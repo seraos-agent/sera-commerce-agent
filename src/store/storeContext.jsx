@@ -69,7 +69,7 @@ export const StoreProvider = ({ children }) => {
   // Persist userStores changes
   useEffect(() => {
     try {
-      if (state.userStores && state.userStores.length > 0) {
+      if (state.userStores) {
         localStorage.setItem("sera_hackathon_user_stores", JSON.stringify(state.userStores));
       }
     } catch (e) {

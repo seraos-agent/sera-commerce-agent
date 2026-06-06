@@ -36,9 +36,10 @@ export function DynamicRenderer({ layout, globalProps }) {
             </section>
             {(() => {
               if (section.type !== "hero") return null;
-              const sVids = globalProps.storeVideos && globalProps.storeVideos.length > 0
-                ? globalProps.storeVideos
-                : (globalProps.storeVideo ? [globalProps.storeVideo] : []);
+              let sVids = Array.isArray(globalProps.storeVideos) ? globalProps.storeVideos.filter(v => typeof v === 'string' && v.trim() !== "") : [];
+              if (sVids.length === 0 && typeof globalProps.storeVideo === 'string' && globalProps.storeVideo.trim() !== "") sVids = [globalProps.storeVideo];
+              if (sVids.length === 0 && Array.isArray(globalProps.branding?.storeVideos)) sVids = globalProps.branding.storeVideos.filter(v => typeof v === 'string' && v.trim() !== "");
+              if (sVids.length === 0 && typeof globalProps.branding?.storeVideo === 'string' && globalProps.branding.storeVideo.trim() !== "") sVids = [globalProps.branding.storeVideo];
               if (sVids.length === 0) return null;
               return (
                 <section style={{ padding: "60px 40px", background: globalProps.isDarkMode ? "#0f0f10" : "#ffffff" }}>
@@ -63,9 +64,11 @@ export function DynamicRenderer({ layout, globalProps }) {
             })()}
             {(() => {
               if (section.type !== "featured_products") return null;
-              const pVids = globalProps.promoVideos && globalProps.promoVideos.length > 0
-                ? globalProps.promoVideos
-                : (globalProps.promoVideo ? [globalProps.promoVideo] : []);
+              let pVids = Array.isArray(globalProps.promoVideos) ? globalProps.promoVideos.filter(v => typeof v === 'string' && v.trim() !== "") : [];
+              if (pVids.length === 0 && typeof globalProps.promoVideo === 'string' && globalProps.promoVideo.trim() !== "") pVids = [globalProps.promoVideo];
+              if (pVids.length === 0 && Array.isArray(globalProps.branding?.promoVideos)) pVids = globalProps.branding.promoVideos.filter(v => typeof v === 'string' && v.trim() !== "");
+              if (pVids.length === 0 && typeof globalProps.branding?.promoVideo === 'string' && globalProps.branding.promoVideo.trim() !== "") pVids = [globalProps.branding.promoVideo];
+              if (pVids.length === 0 && typeof globalProps.branding?.videoUrl === 'string' && globalProps.branding.videoUrl.trim() !== "") pVids = [globalProps.branding.videoUrl];
               if (pVids.length === 0) return null;
               return (
                 <section style={{ padding: "80px 40px", background: globalProps.isDarkMode ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)", borderTop: `1px solid ${globalProps.isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
@@ -83,7 +86,7 @@ export function DynamicRenderer({ layout, globalProps }) {
                     </div>
 
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 24 }}>
-                      {[...new Set(pVids)].map((vidUrl, i) => (
+                      {pVids.map((vidUrl, i) => (
                         <div key={i} style={{ borderRadius: 16, overflow: "hidden", position: "relative", aspectRatio: "9/16", background: globalProps.isDarkMode ? "#1a1a1e" : "#f3f4f6", border: `1px solid ${globalProps.isDarkMode ? "#2a2a2e" : "#e5e7eb"}` }}>
                           <video src={vidUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 40%)" }} />

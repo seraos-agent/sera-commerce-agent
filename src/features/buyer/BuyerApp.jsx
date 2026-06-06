@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SeraAgentMessage from '../../SeraAgentMessage';
 import { useStore } from '../../store/storeContext';
-import { CURATED_STORES } from '../../utils/constants';
+import { CURATED_STORES, getSessionId, INITIAL_PHILOSOPHY } from '../../utils/constants';
 import { sendChat, BACKEND_URL } from '../../lib/agentApi';
 export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
   const {
@@ -24,7 +24,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
 
   const [chatOpen, setChatOpen] = useState(false);
   const [abortController, setAbortController] = useState(null);
-  
+
   const handleAbort = () => {
     if (abortController) {
       abortController.abort();
@@ -67,18 +67,49 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
       .then(r => r.json())
       .then(data => {
         if (data.success && Array.isArray(data.stores)) {
-          const formattedStores = data.stores.map(match => ({
-            ...match,
-            id: match.store_id || match._id || match.id,
-            name: match.store_name || match.name || "Unknown Store",
-            desc: match.description || match.desc || "An autonomous AI-curated store.",
-            category: match.category || "General",
-            isUserStore: false,
-            storeData: {
+          const formattedStores = data.stores.map(match => {
+            const id = match.store_id || match._id || match.id;
+            const name = match.store_name || match.name || "Unknown Store";
+            const desc = match.description || match.desc || "An autonomous AI-curated store.";
+            const cover = match.branding?.heroImage || match.branding?.cover || match.cover || null;
+            const philosophyItems = match.branding?.philosophy || INITIAL_PHILOSOPHY;
+            const validProducts = (match.products || []).filter(p => p.name && p.price && !p.name.toLowerCase().includes("generating") && !p.name.includes("..."));
+            return {
               ...match,
-              products: match.products || []
-            }
-          }));
+              id: id,
+              name: name,
+              desc: desc,
+              category: match.category || "General",
+              cover: cover,
+              isUserStore: match.session_id === getSessionId(),
+              customSchema: {
+                id: id,
+                name: name,
+                category: match.category || "General",
+                metadata: { brand_identity: name, objective: desc },
+                theme: { themeColor: "#c8b89a", heroBg: "linear-gradient(135deg, #111113 0%, #1a1a1e 100%)", isDarkMode: true, fontFamily: "'Playfair Display', serif" },
+                layout: [
+                  { type: "hero", props: { 
+                      title: name, 
+                      subtitle: desc, 
+                      heroImage: cover,
+                      collection: match.branding?.collection || match.storeData?.collection || "New Collection",
+                      buttonText: match.branding?.buttonText || match.storeData?.buttonText || "Shop Now",
+                      promoBanner: match.branding?.promoBanner || match.storeData?.promoBanner || "",
+                      heroVariant: match.branding?.heroVariant || match.storeData?.heroVariant || "centered"
+                    } 
+                  },
+                  { type: "featured_products", props: { products: validProducts } },
+                  { type: "philosophy", props: { items: philosophyItems } },
+                  { type: "footer", props: {} }
+                ]
+              },
+              storeData: {
+                ...match,
+                products: validProducts
+              }
+            };
+          });
           // Only replace if they are actually different, or just merge them
           setUserStores(formattedStores);
         }
@@ -172,9 +203,9 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
       }
       if (!storeId) return;
       const allStores = [...(userStores || []), ...CURATED_STORES];
-      const found = allStores.find(s => 
-        String(s.id) === String(storeId) || 
-        String(s._id) === String(storeId) || 
+      const found = allStores.find(s =>
+        String(s.id) === String(storeId) ||
+        String(s._id) === String(storeId) ||
         String(s.store_id) === String(storeId) ||
         String(s.name || '').toLowerCase().replace(/\s+/g, '_') === String(storeId).toLowerCase()
       );
@@ -192,24 +223,52 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
               String(s.store_id) === String(storeId)
             );
             if (match) {
-              // Normalize backend store data to frontend format
+              const id = match.store_id || match._id || match.id;
+              const name = match.store_name || match.name || "Unknown Store";
+              const desc = match.description || match.desc || "An autonomous AI-curated store.";
+              const cover = match.branding?.heroImage || match.branding?.cover || match.cover || null;
+              const philosophyItems = match.branding?.philosophy || INITIAL_PHILOSOPHY;
+
+              const validProducts = (match.products || []).filter(p => p.name && p.price && !p.name.toLowerCase().includes("generating") && !p.name.includes("..."));
               const normalizedStore = {
                 ...match,
-                id: match.store_id || match._id || match.id,
-                name: match.store_name || match.name || "Unknown Store",
-                desc: match.description || match.desc || "An autonomous AI-curated store.",
+                id: id,
+                name: name,
+                desc: desc,
                 category: match.category || "General",
-                cover: match.branding?.heroImage || match.branding?.cover || match.cover || null,
-                isUserStore: false,
+                cover: cover,
+                isUserStore: match.session_id === getSessionId(),
+                customSchema: {
+                  id: id,
+                  name: name,
+                  category: match.category || "General",
+                  metadata: { brand_identity: name, objective: desc },
+                  theme: { themeColor: "#c8b89a", heroBg: "linear-gradient(135deg, #111113 0%, #1a1a1e 100%)", isDarkMode: true, fontFamily: "'Playfair Display', serif" },
+                  layout: [
+                    { type: "hero", props: { 
+                        title: name, 
+                        subtitle: desc, 
+                        heroImage: cover,
+                        collection: match.branding?.collection || "New Collection",
+                        buttonText: match.branding?.buttonText || "Shop Now",
+                        promoBanner: match.branding?.promoBanner || "",
+                        heroVariant: match.branding?.heroVariant || "centered"
+                      } 
+                    },
+                    { type: "featured_products", props: { products: validProducts } },
+                    { type: "philosophy", props: { items: philosophyItems } },
+                    { type: "footer", props: {} }
+                  ]
+                },
                 storeData: {
                   ...match,
-                  products: (match.products || []).filter(p => p.name && p.price && !p.name.includes("Generating") && !p.name.includes("..."))
+                  products: validProducts
                 }
               };
               setSelectedStorefront(normalizedStore);
             }
           })
-          .catch(() => {});
+          .catch(() => { });
       }
     };
     window.addEventListener('sera:openStore', handleOpenStore);
@@ -231,10 +290,10 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
     setBuyerAiMessages(prev => [...prev, { role: "user", text: userText, id: `user-${newMsgId}` }]);
     setBuyerAiQuery("");
     setBuyerAiStatus("Analyzing request...");
-    
+
     const controller = new AbortController();
     setAbortController(controller);
-    
+
     try {
       const storeContext = {
         session_id: "buyer_session_1",
@@ -409,7 +468,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
         <div style={{ width: "100%", marginBottom: 56 }}>
           {/* Image Banner */}
           <div style={{ width: "100%", background: isDarkMode ? "#0f0f10" : "#fff", borderBottom: `1px solid ${isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
-            <img src="/buyer-banner.jpg" alt="Start Shopping Powered by AI" style={{ width: "100%", maxHeight: "450px", objectFit: "cover", display: "block", margin: "0 auto" }} />
+            <img src="/buyer-hero.jpg" alt="Start Shopping Powered by AI" style={{ width: "100%", maxHeight: "450px", objectFit: "cover", display: "block", margin: "0 auto" }} />
           </div>
         </div>
         {/* Buyer Mode Restricted Content Area */}
@@ -527,7 +586,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
               const sData = s.storeData || s.customSchema?.storeData || s.schema?.storeData || {};
               const videos = sData.promoVideos && sData.promoVideos.length > 0
                 ? sData.promoVideos
-                : (sData.promoVideo ? [sData.promoVideo] : (s.promoVideo ? [s.promoVideo] : []));
+                : (sData.promoVideo ? [sData.promoVideo] : (s.promoVideo ? [s.promoVideo] : (sData.branding?.promoVideos && sData.branding.promoVideos.length > 0 ? sData.branding.promoVideos : (s.branding?.promoVideos && s.branding.promoVideos.length > 0 ? s.branding.promoVideos : (sData.branding?.promoVideo ? [sData.branding.promoVideo] : (s.branding?.promoVideo ? [s.branding.promoVideo] : (sData.branding?.videoUrl ? [sData.branding.videoUrl] : (s.branding?.videoUrl ? [s.branding.videoUrl] : []))))))));
               [...new Set(videos)].forEach((vidUrl, idx) => {
                 allCampaigns.push({
                   id: `${s.id}-promo-${idx}`,
@@ -590,19 +649,21 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
               {[...CURATED_STORES, ...userStores]
                 .flatMap(s => (s.storeData?.products || s.products || (s.customSchema || s.schema)?.layout?.find(l => l.type === "featured_products")?.props?.products || [])
-                  .filter(p => p.name && p.price && !p.name.includes("Generating") && !p.name.includes("..."))
+                  .filter(p => p.name && p.price && !p.name.toLowerCase().includes("generating") && !p.name.includes("..."))
                   .map(p => ({
-                  id: p.name || p.id,
-                  name: p.name,
-                  price: p.price,
-                  desc: p.description || p.desc,
-                  image: p.imageUrl || p.image,
-                  storeId: s.id || s.store_id || s._id,
-                  store: (s.customSchema || s.schema)?.metadata?.brand_identity || s.storeData?.title || s.name || "AI Store",
-                  aiTag: p.promo || "Trending",
-                  rating: 4.8,
-                  sales: 340 + (((p.id || p.name || "A").charCodeAt(0) * 43) % 500)
-                })))
+                    id: p.name || p.id,
+                    name: p.name,
+                    price: p.price,
+                    desc: p.description || p.desc,
+                    image: p.imageUrl || p.image,
+                    verticalVideoUrl: p.verticalVideoUrl,
+                    landscapeVideoUrl: p.landscapeVideoUrl,
+                    storeId: s.id || s.store_id || s._id,
+                    store: (s.customSchema || s.schema)?.metadata?.brand_identity || s.storeData?.title || s.name || "AI Store",
+                    aiTag: p.promo || "Trending",
+                    rating: 4.8,
+                    sales: 340 + (((p.id || p.name || "A").charCodeAt(0) * 43) % 500)
+                  })))
                 .filter(p => selectedCategoryFilter === "all" || [...CURATED_STORES, ...userStores].find(s => s.id === p.storeId)?.category === selectedCategoryFilter)
                 .filter(p => !buyerSearchQuery || p.name.toLowerCase().includes(buyerSearchQuery.toLowerCase()) || p.store.toLowerCase().includes(buyerSearchQuery.toLowerCase()) || p.aiTag.toLowerCase().includes(buyerSearchQuery.toLowerCase()))
                 .map(prod => (
@@ -614,6 +675,8 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                         price: prod.price,
                         desc: prod.desc || "Premium curated item directly promoted by our top AI storefronts. Crafted with precision and designed for the modern individual.",
                         imageUrl: prod.image,
+                        verticalVideoUrl: prod.verticalVideoUrl,
+                        landscapeVideoUrl: prod.landscapeVideoUrl,
                         promo: prod.aiTag,
                         store: prod.store,
                         rating: prod.rating,
@@ -640,7 +703,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                       </div>
                     </div>
                     <div style={{ padding: "16px", display: "flex", flexDirection: "column", flex: 1 }}>
-                      <span 
+                      <span
                         onClick={(e) => {
                           e.stopPropagation();
                           window.dispatchEvent(new CustomEvent('sera:openStore', { detail: { storeId: prod.storeId } }));
@@ -828,7 +891,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                 </div>
               )
             ))}
-            
+
             {/* AI Live Status Chat Bubble */}
             {buyerAiStatus && (
               <div style={{ display: "flex", justifyContent: "flex-start" }}>
@@ -847,7 +910,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                 </div>
               </div>
             )}
-            
+
             <div ref={chatEndRef} />
           </div>
           {/* Input Area */}
@@ -876,22 +939,22 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                 rows={1}
                 disabled={!!buyerAiStatus}
               />
-              <button 
-                type={buyerAiStatus ? "button" : "submit"} 
+              <button
+                type={buyerAiStatus ? "button" : "submit"}
                 onClick={buyerAiStatus ? handleAbort : undefined}
-                style={{ 
-                  background: buyerAiStatus ? (isDarkMode ? "#3f3f46" : "#e5e7eb") : "#c8b89a", 
-                  border: "none", 
-                  borderRadius: 10, 
-                  width: 32, 
-                  height: 32, 
-                  display: "flex", 
-                  alignItems: "center", 
-                  justifyContent: "center", 
-                  color: buyerAiStatus ? (isDarkMode ? "#a1a1aa" : "#9ca3af") : "#0f0f10", 
-                  cursor: "pointer", 
-                  flexShrink: 0, 
-                  fontWeight: 700 
+                style={{
+                  background: buyerAiStatus ? (isDarkMode ? "#3f3f46" : "#e5e7eb") : "#c8b89a",
+                  border: "none",
+                  borderRadius: 10,
+                  width: 32,
+                  height: 32,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: buyerAiStatus ? (isDarkMode ? "#a1a1aa" : "#9ca3af") : "#0f0f10",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  fontWeight: 700
                 }}>
                 {buyerAiStatus ? (
                   <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24">
@@ -939,11 +1002,9 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
               )}
             </div>
           </div>
-          {/* Stunning Full-Width Store Cover Banner */}
-          {(() => {
-            const stData = selectedStorefront.isUserStore
-              ? (selectedStorefront.customSchema?.layout?.find(s => s.type === "hero")?.props || {})
-              : (selectedStorefront.storeData || {});
+          {/* Stunning Full-Width Store Cover Banner for Legacy Curated Stores */}
+          {(!selectedStorefront.customSchema) && (() => {
+            const stData = selectedStorefront.storeData || {};
             return (
               <>
                 <div style={{
@@ -969,7 +1030,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                 {(() => {
                   const sVids = stData.storeVideos && stData.storeVideos.length > 0
                     ? stData.storeVideos
-                    : (stData.storeVideo ? [stData.storeVideo] : []);
+                    : (stData.storeVideo ? [stData.storeVideo] : (stData.branding?.storeVideos && stData.branding.storeVideos.length > 0 ? stData.branding.storeVideos : (selectedStorefront.branding?.storeVideos && selectedStorefront.branding.storeVideos.length > 0 ? selectedStorefront.branding.storeVideos : (stData.branding?.storeVideo ? [stData.branding.storeVideo] : (selectedStorefront.branding?.storeVideo ? [selectedStorefront.branding.storeVideo] : [])))));
                   if (sVids.length === 0) return null;
                   return (
                     <section style={{ padding: "60px 40px", background: isDarkMode ? "#0f0f10" : "#ffffff" }}>
@@ -998,7 +1059,18 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
           {/* Dynamic Store Content */}
           <div style={{ flex: 1 }}>
             <DynamicRenderer
-              layout={selectedStorefront.isUserStore ? selectedStorefront.customSchema.layout.filter(s => s.type !== "hero") : [
+              layout={selectedStorefront.customSchema ? selectedStorefront.customSchema.layout.map(s => {
+                if (s.type === "featured_products" && s.props?.products) {
+                  return {
+                    ...s,
+                    props: {
+                      ...s.props,
+                      products: s.props.products.filter(p => p.name && p.name.trim() !== "" && p.price && !p.name.toLowerCase().includes("generating") && !p.name.includes("..."))
+                    }
+                  };
+                }
+                return s;
+              }) : [
                 {
                   id: `store-products-${selectedStorefront.id}`,
                   type: "featured_products",
@@ -1026,11 +1098,15 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                 }
               ]}
               globalProps={{
-                ...(selectedStorefront.isUserStore
-                  ? (selectedStorefront.customSchema?.layout?.find(s => s.type === "hero")?.props || {})
-                  : (selectedStorefront.storeData || {})),
-                themeColor: selectedStorefront.isUserStore ? (selectedStorefront.customSchema.theme?.themeColor || "#c8b89a") : "#c8b89a",
-                products: selectedStorefront.isUserStore
+                ...(selectedStorefront.customSchema?.layout?.find(s => s.type === "hero")?.props || {}),
+                ...(selectedStorefront.storeData || {}),
+                title: selectedStorefront.storeData?.title || selectedStorefront.customSchema?.metadata?.brand_identity || selectedStorefront.customSchema?.layout?.find(s => s.type === "hero")?.props?.title,
+                subtitle: selectedStorefront.storeData?.subtitle || selectedStorefront.customSchema?.metadata?.objective || selectedStorefront.customSchema?.layout?.find(s => s.type === "hero")?.props?.subtitle || "Premium quality curated for you.",
+                collection: selectedStorefront.storeData?.collection || selectedStorefront.customSchema?.layout?.find(s => s.type === "hero")?.props?.collection || "New Collection",
+                buttonText: selectedStorefront.storeData?.buttonText || selectedStorefront.customSchema?.layout?.find(s => s.type === "hero")?.props?.buttonText || "Shop Now",
+                branding: selectedStorefront.branding || {},
+                themeColor: selectedStorefront.customSchema ? (selectedStorefront.customSchema.theme?.themeColor || "#c8b89a") : "#c8b89a",
+                products: selectedStorefront.customSchema
                   ? (selectedStorefront.customSchema?.layout?.find(s => s.type === "featured_products")?.props?.products || [])
                   : (selectedStorefront.storeData?.products || selectedStorefront.schema?.layout?.find(s => s.type === "featured_products")?.props?.products || []),
                 isDarkMode: isDarkMode,
@@ -1069,9 +1145,15 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
       {selectedProductDetail && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)", padding: 20 }}>
           <div style={{ background: isDarkMode ? "#161618" : "#fff", border: `1px solid ${t.border}`, borderRadius: 24, overflow: "hidden", width: "100%", maxWidth: 850, display: "flex", flexDirection: window.innerWidth < 768 ? "column" : "row", boxShadow: "0 24px 60px rgba(0,0,0,0.6)", maxHeight: "90vh" }}>
-            {/* Left Image */}
+            {/* Left Image / Video */}
             <div style={{ width: window.innerWidth < 768 ? "100%" : "50%", background: "#1a1a1e", position: "relative", minHeight: 300 }}>
-              <img src={selectedProductDetail.imageUrl} alt={selectedProductDetail.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              {selectedProductDetail.verticalVideoUrl ? (
+                <video src={selectedProductDetail.verticalVideoUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : selectedProductDetail.landscapeVideoUrl ? (
+                <video src={selectedProductDetail.landscapeVideoUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <img src={selectedProductDetail.imageUrl} alt={selectedProductDetail.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              )}
               {selectedProductDetail.promo && (
                 <div style={{ position: "absolute", top: 20, left: 20, background: "#c8b89a", color: "#0f0f10", fontSize: 11, fontWeight: 800, padding: "6px 12px", borderRadius: 8 }}>
                   {selectedProductDetail.promo}

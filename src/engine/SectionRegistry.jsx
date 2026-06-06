@@ -128,10 +128,11 @@ export const SECTION_REGISTRY = {
                   onClick={() => {
                     if (props.onSelectProduct) {
                       props.onSelectProduct({
+                        ...p,
                         name: p.name,
                         price: p.price,
-                        desc: p.desc || p.description || "Premium botanical formulation and high-quality curated selection. Crafted for optimal results and daily elegance.",
-                        imageUrl: p.imageUrl,
+                        desc: p.desc || p.description || "An exclusive, high-quality product carefully curated for our collection. Designed to deliver excellence.",
+                        imageUrl: p.imageUrl || p.image || "",
                         promo: p.promo || "Curated",
                         store: props.title || "Brand Store",
                         rating: "4.9",
@@ -151,14 +152,14 @@ export const SECTION_REGISTRY = {
                   }}
                 >
                   {/* Image: shimmer while loading, real image on top */}
-                  <div style={{ aspectRatio: "1 / 1", width: "100%", position: "relative", ...(p.verifiedUrl ? { backgroundColor: t.surface.secondary } : skStyle), transition: "background-color 0.3s ease" }}>
-                    {!p.verifiedUrl && <ImageLoadingPlaceholder />}
+                  <div style={{ aspectRatio: "1 / 1", width: "100%", position: "relative", ...((p.verifiedUrl || p.imageUrl) ? { backgroundColor: t.surface.secondary } : skStyle), transition: "background-color 0.3s ease" }}>
+                    {!(p.verifiedUrl || p.imageUrl) && <ImageLoadingPlaceholder />}
                     {p.imageUrl && (
                       <img
                         key={`${p.imageUrl}-${p.verifiedUrl ? 'verified' : 'pending'}`}
                         src={p.imageUrl}
                         alt={p.name}
-                        style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, opacity: p.verifiedUrl ? 1 : 0, transition: "opacity 0.5s ease-in" }}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, opacity: (p.verifiedUrl || p.imageUrl) ? 1 : 0, transition: "opacity 0.5s ease-in" }}
                         onLoad={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.display = "block"; }}
                         onError={e => { e.currentTarget.style.display = "none"; }}
                       />
@@ -168,7 +169,7 @@ export const SECTION_REGISTRY = {
                   {/* Text Container */}
                   <div style={{ padding: "16px", display: "flex", flexDirection: "column", flex: 1 }}>
                     <h3 style={{ fontSize: 15, fontWeight: 700, color: t.text.primary, transition: "color 0.3s ease", marginBottom: 4, lineHeight: 1.3 }}>{p.name}</h3>
-                    <p style={{ fontSize: 12, color: t.text.secondary, marginBottom: 12, lineHeight: 1.4, flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", transition: "color 0.3s ease" }}>{p.desc || p.description || "Premium botanical formulation and high-quality curated selection."}</p>
+                    <p style={{ fontSize: 12, color: t.text.secondary, marginBottom: 12, lineHeight: 1.4, flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", transition: "color 0.3s ease" }}>{p.desc || p.description || "An exclusive, high-quality product carefully curated for our collection."}</p>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12 }}>
                       <span style={{ fontSize: 15, fontWeight: 800, color: props.themeColor || "#c8b89a" }}>{p.price}</span>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: t.text.secondary }}>
@@ -222,9 +223,9 @@ export const SECTION_REGISTRY = {
             <div className="hide-scrollbar" style={{ overflowX: "hidden" }}>
               <div className="philosophy-scroller">
                 {doubledItems.map((v, i) => (
-                  <div key={i} onClick={() => props.onSelectPhilosophy && props.onSelectPhilosophy(v)} style={{ flex: "0 0 350px", height: 450, position: "relative", borderRadius: 24, overflow: "hidden", cursor: "pointer", ...(v.verifiedUrl ? { backgroundColor: t.surface.secondary } : { backgroundImage: t.surface.skeleton, backgroundSize: "200% 100%", animation: "shimmer 1.8s infinite linear" }), transition: "background-color 0.3s ease" }}>
-                    {!v.verifiedUrl && <ImageLoadingPlaceholder />}
-                    {v.imageUrl && <img key={`${v.imageUrl}-${v.verifiedUrl ? 'verified' : 'pending'}`} src={v.imageUrl} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, opacity: v.verifiedUrl ? 1 : 0, transition: "opacity 0.5s ease-in" }} onLoad={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.display = "block"; }} onError={e => { e.currentTarget.style.display = "none"; }} />}
+                  <div key={i} onClick={() => props.onSelectPhilosophy && props.onSelectPhilosophy(v)} style={{ flex: "0 0 350px", height: 450, position: "relative", borderRadius: 24, overflow: "hidden", cursor: "pointer", ...((v.verifiedUrl || v.imageUrl) ? { backgroundColor: t.surface.secondary } : { backgroundImage: t.surface.skeleton, backgroundSize: "200% 100%", animation: "shimmer 1.8s infinite linear" }), transition: "background-color 0.3s ease" }}>
+                    {!(v.verifiedUrl || v.imageUrl) && <ImageLoadingPlaceholder />}
+                    {v.imageUrl && <img key={`${v.imageUrl}-${v.verifiedUrl ? 'verified' : 'pending'}`} src={v.imageUrl} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, opacity: (v.verifiedUrl || v.imageUrl) ? 1 : 0, transition: "opacity 0.5s ease-in" }} onLoad={e => { e.currentTarget.style.opacity = 1; e.currentTarget.style.display = "block"; }} onError={e => { e.currentTarget.style.display = "none"; }} />}
                     <div style={{ position: "absolute", inset: 0, padding: 40, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)", transition: "background 0.3s ease" }}>
                       <h4 style={{ fontSize: 12, fontWeight: 800, color: props.themeColor || "#fff", letterSpacing: 4, textTransform: "uppercase", marginBottom: 12, transition: "color 0.3s ease" }}>{v.label || v.title}</h4>
                       <p style={{ fontSize: 15, color: "rgba(255,255,255,0.9)", lineHeight: 1.6, fontWeight: 300, display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden", transition: "color 0.3s ease" }}>{v.sub || v.body}</p>
@@ -377,12 +378,12 @@ export const SECTION_REGISTRY = {
             </div>
             <div style={{ maxWidth: 1200, margin: "0 auto", borderTop: `1px solid ${t.border.subtle}`, paddingTop: 40, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 20, transition: "border-color 0.3s ease" }}>
               <p style={{ fontSize: 13, color: t.text.muted, transition: "color 0.3s ease" }}>&copy; 2026 {props.title || "SERA Store"}. Generated autonomously by SERA Architecture.</p>
-                            <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
                 <span style={{ color: t.text.muted, cursor: "pointer", transition: "color 0.2s", display: "flex", alignItems: "center" }} onMouseEnter={e => e.currentTarget.style.color = props.themeColor} onMouseLeave={e => e.currentTarget.style.color = t.text.muted} title="X / Twitter">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
                 </span>
                 <span style={{ color: t.text.muted, cursor: "pointer", transition: "color 0.2s", display: "flex", alignItems: "center" }} onMouseEnter={e => e.currentTarget.style.color = props.themeColor} onMouseLeave={e => e.currentTarget.style.color = t.text.muted} title="Instagram">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg>
                 </span>
               </div>
             </div>

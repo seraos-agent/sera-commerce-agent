@@ -531,51 +531,81 @@ async def chat_with_agent(request: ChatRequest):
                         results = res.get("results", [])
                         
                         # --- SELF-CORRECTION LOOP ---
-                        failed_items = [r for r in results if r.get("status") == "failed"]
-                        if failed_items:
+                        max_retries = 3
+                        attempt = 0
+                        while attempt < max_retries:
+                            failed_items = [r for r in results if r.get("status") == "failed"]
+                            if not failed_items:
+                                break
+                            
+                            # The user sees the retry notification
                             yield json.dumps({
-                                "event_id": f"evt_fallback_correction_{int(time.time())}",
+                                "event_id": f"evt_fallback_correction_{int(time.time())}_{attempt}",
                                 "timestamp": int(time.time()),
                                 "session_id": session_id,
                                 "type": "cognition",
-                                "message": f"Detected {len(failed_items)} failed assets (safety filter/timeout). Initiating self-correction...",
+                                "message": f"Detected {len(failed_items)} failed assets (safety filter/timeout). Initiating self-correction (Attempt {attempt+1}/{max_retries})...",
                                 "phase": "quality_check",
-                                "done": True
+                                "done": False
                             }) + "\n"
                             
                             yield json.dumps({
-                                "event_id": f"evt_fallback_correction_2_{int(time.time())}",
+                                "event_id": f"evt_fallback_correction_2_{int(time.time())}_{attempt}",
                                 "timestamp": int(time.time()),
                                 "session_id": session_id,
                                 "type": "cognition",
-                                "message": "Adjusting prompts to safe abstract designs and re-generating...",
+                                "message": "Retrying failed asset generation...",
                                 "phase": "asset_generation",
                                 "done": False
                             }) + "\n"
                             
-                            # Modify prompts for failed items to use safe abstract fallbacks
+                            # Clear URLs for failed items to force regeneration with the SAME prompt
                             for sec in schema.get("layout", []):
                                 st = sec.get("type")
                                 props = sec.get("props", {})
                                 if st == "hero":
-                                    if any(f.get("itemId") == "hero_bg" for f in failed_items):
-                                        props["heroImagePrompt"] = "A beautiful elegant abstract minimalist gradient background, neutral colors, safe, clean"
+                                    pass # hero image URL is usually cleared automatically
                                 elif st == "featured_products":
                                     for idx, p in enumerate(props.get("products", [])):
                                         if any(f.get("itemId") == f"prod_{idx}" for f in failed_items):
-                                            p["imagePrompt"] = f"Abstract 3D geometric shape representing {p.get('name', 'product')}, elegant minimalist product design, white background"
                                             p["verifiedUrl"] = ""
                                             p["imageUrl"] = ""
                                 elif st == "philosophy":
                                     for idx, item in enumerate(props.get("items", [])):
                                         if any(f.get("itemId") == f"philo_{idx}" for f in failed_items):
-                                            item["imagePrompt"] = f"Minimalist elegant abstract logo design for {item.get('label', 'philosophy')}, clean aesthetic"
                                             item["verifiedUrl"] = ""
                                             item["imageUrl"] = ""
                                             
                             # Re-run only the modified (missing) assets
-                            retry_res = await generate_store_assets(schema)
-                            if retry_res.get("success"):
+                            q_retry = asyncio.Queue()
+                            async def run_retry_task():
+                                try:
+                                    retry_res = await generate_store_assets(schema, q_retry)
+                                    await q_retry.put({"done": True, "res": retry_res})
+                                except Exception as ex:
+                                    await q_retry.put({"done": True, "res": {"success": False}})
+                            
+                            asyncio.create_task(run_retry_task())
+                            
+                            retry_res = None
+                            while True:
+                                r_msg = await q_retry.get()
+                                if r_msg.get("done"):
+                                    retry_res = r_msg["res"]
+                                    break
+                                
+                                yield json.dumps({
+                                    "event_id": f"evt_fallback_execution_retry_{int(time.time())}_{attempt}",
+                                    "timestamp": int(time.time()),
+                                    "session_id": session_id,
+                                    "type": "execution_state",
+                                    "state": {
+                                        "task_id": f"task_retry_{int(time.time())}",
+                                        "results": r_msg.get("results", [])
+                                    }
+                                }) + "\n"
+
+                            if retry_res and retry_res.get("success"):
                                 retry_results = retry_res.get("results", [])
                                 # Merge successful retries
                                 for rr in retry_results:
@@ -584,7 +614,9 @@ async def chat_with_agent(request: ChatRequest):
                                             if old_r.get("itemId") == rr.get("itemId"):
                                                 results[i] = rr
                                                 break
-                        # --- END SELF-CORRECTION ---
+                                                
+                            attempt += 1
+                        # --- END SELF-CORRECTION LOOP ---
 
                         params["schema"] = res.get("schema")
                         if action == "update_philosophy":

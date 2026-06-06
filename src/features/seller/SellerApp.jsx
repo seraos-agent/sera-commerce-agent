@@ -19,6 +19,7 @@ import {
   isStoreMutationAction,
   getStockCount,
   getStorePhilosophy,
+  getSessionId,
   storeThemeDark,
   storeThemeLight
 } from '../../utils/constants';
@@ -106,7 +107,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
   const [isPublished, setIsPublished] = useState(true);
   const [showPublishedModal, setShowPublishedModal] = useState(false);
   // --- BUYER MODE AI-NATIVE DISCOVERY STATES ---
-                              const showToast = (msg) => {
+  const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(""), 3000);
   };
@@ -127,8 +128,8 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
   };
   // --- DYNAMIC UI STATES ---
   // --- CONSOLIDATED STORE SCHEMA ---
-  
-        const [chatWidth, setChatWidth] = useState(380);
+
+  const [chatWidth, setChatWidth] = useState(380);
   const [isResizing, setIsResizing] = useState(false);
   const startResizing = (e) => {
     e.preventDefault();
@@ -157,7 +158,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
       document.body.style.userSelect = "auto";
     };
   }, [isResizing]);
-            useEffect(() => {
+  useEffect(() => {
     if (activeNav === "analytics") {
       if (!activeAnalyticsStoreId && userStores.length > 0) {
         setActiveAnalyticsStoreId(userStores[0].id);
@@ -320,7 +321,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
     { id: "shopify", name: "Shopify Store", status: "Connected", icon: "ðŸ›ï¸" },
     { id: "instagram", name: "Instagram Shopping", status: "Connected", icon: "ðŸ“¸" },
   ]);
-  
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, steps, agentActivity, ephemeralThought]);
@@ -697,11 +698,16 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
         }
         break;
       case 'change_product_desc':
-        if (params.productName && params.desc) {
+        console.log("AGENT change_product_desc CALLED WITH:", params);
+        const descText = params.desc || params.description || params.newDesc || params.newDescription || params.new_desc || params.text;
+        const targetProdName = params.productName || params.name || params.product || params.target;
+        if (targetProdName && descText) {
           setProducts(p => p.map(prod =>
-            prod.name.toLowerCase().includes(params.productName.toLowerCase()) ? { ...prod, desc: params.desc } : prod
+            prod.name.toLowerCase().includes(targetProdName.toLowerCase()) || targetProdName.toLowerCase().includes(prod.name.toLowerCase()) ? { ...prod, desc: descText, description: descText } : prod
           ));
-          addStep(`Updating description: ${params.productName}`);
+          addStep(`Updating description: ${targetProdName}`);
+        } else {
+          console.warn("change_product_desc missing productName or descText", params);
         }
         break;
       case 'change_product_name':
@@ -876,7 +882,11 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
             collection: params.collection || "New Collection",
             buttonText: params.buttonText || "Shop Now",
             promoBanner: params.promoBanner || "",
-            heroVariant: params.heroVariant || "centered"
+            heroVariant: params.heroVariant || "centered",
+            storeVideo: "",
+            storeVideos: [],
+            promoVideo: "",
+            promoVideos: []
           });
           setStoreSchema(prev => ({ ...prev, metadata: { ...prev.metadata, brand_identity: params.title } }));
         }
@@ -891,7 +901,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
         else if (params.heroImage) {
           setHeroImage(params.heroImage);
         } // else {
-          // setHeroImage(null); // Preserve existing image
+        // setHeroImage(null); // Preserve existing image
         // }
         if (params.layout && Array.isArray(params.layout)) {
           setLayoutOrder(params.layout.filter(s => ["hero", "featured_products", "philosophy", "testimonials", "faq", "newsletter", "promo_ticker", "footer"].includes(s)));
@@ -1650,8 +1660,8 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                 fontFamily: "'DM Sans', sans-serif", transition: "all 0.2s",
                 fontWeight: activeNav === navLabel.toLowerCase() ? 600 : 400
               }}
-              onMouseEnter={e => { if (activeNav !== navLabel.toLowerCase()) e.currentTarget.style.color = isDarkMode ? "#c8b89a" : "#8b7355"; }}
-              onMouseLeave={e => { if (activeNav !== navLabel.toLowerCase()) e.currentTarget.style.color = isDarkMode ? "#4a4a52" : "#9ca3af"; }}
+                onMouseEnter={e => { if (activeNav !== navLabel.toLowerCase()) e.currentTarget.style.color = isDarkMode ? "#c8b89a" : "#8b7355"; }}
+                onMouseLeave={e => { if (activeNav !== navLabel.toLowerCase()) e.currentTarget.style.color = isDarkMode ? "#4a4a52" : "#9ca3af"; }}
               >{navLabel}</button>
             ))}
           </div>
@@ -1696,19 +1706,30 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                   try {
                     const productsList = storeSchema.layout?.find(s => s.type === "featured_products")?.props?.products || storeSchema.products || [];
                     const heroTitle = storeSchema.layout?.find(s => s.type === "hero")?.props?.title;
+                    const heroSubtitle = storeSchema.layout?.find(s => s.type === "hero")?.props?.subtitle;
                     const metaName = storeSchema.metadata?.brand_identity;
                     const storeName = storeSchema.name || metaName || heroTitle || "Unknown Brand";
                     const storeCategory = storeSchema.category || storeSchema.metadata?.category || storeSchema.metadata?.industry || "General Store";
                     const payload = {
-                      session_id: "guest_default",
+                      session_id: getSessionId(),
                       store_id: storeSchema.id,
                       name: storeName,
                       store_name: storeName,
+                      description: heroSubtitle || storeSchema.metadata?.objective || "An autonomous AI-curated store.",
                       category: storeCategory,
                       branding: {
                         heroImage: heroImage || storeSchema.layout?.find(s => s.type === "hero")?.props?.heroImage || "",
+                        collection: storeData.collection || storeSchema.layout?.find(s => s.type === "hero")?.props?.collection,
+                        buttonText: storeData.buttonText || storeSchema.layout?.find(s => s.type === "hero")?.props?.buttonText,
+                        promoBanner: storeData.promoBanner || storeSchema.layout?.find(s => s.type === "hero")?.props?.promoBanner,
+                        heroVariant: storeData.heroVariant || storeSchema.layout?.find(s => s.type === "hero")?.props?.heroVariant,
+                        storeVideo: storeData.storeVideo || (storeData.storeVideos && storeData.storeVideos[0]) || storeData.branding?.storeVideo || (storeData.branding?.storeVideos && storeData.branding?.storeVideos[0]) || "",
+                        promoVideo: storeData.promoVideo || (storeData.promoVideos && storeData.promoVideos[0]) || storeData.branding?.promoVideo || (storeData.branding?.promoVideos && storeData.branding?.promoVideos[0]) || "",
+                        storeVideos: storeData.storeVideos || (storeData.storeVideo ? [storeData.storeVideo] : []) || storeData.branding?.storeVideos || [],
+                        promoVideos: storeData.promoVideos || (storeData.promoVideo ? [storeData.promoVideo] : []) || storeData.branding?.promoVideos || [],
                         philosophy: storeSchema.layout?.find(s => s.type === "philosophy")?.props?.items || []
                       },
+                      storeData: storeData,
                       products: productsList,
                       type: "seller"
                     };
@@ -1720,7 +1741,31 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                     const finalStoreId = res.store_id;
                     setIsPublishing(false);
                     setIsPublished(true);
-                    const updatedSchema = { ...storeSchema, id: finalStoreId };
+                    
+                    // Update schema with permanent GCS URLs returned from backend
+                    let gcsSchema = { ...storeSchema, id: finalStoreId };
+                    if (res.branding) {
+                      gcsSchema.layout = gcsSchema.layout.map(s => {
+                        if (s.type === "hero") {
+                          return { ...s, props: { ...s.props, ...res.branding } };
+                        }
+                        if (s.type === "philosophy" && res.branding.philosophy) {
+                          return { ...s, props: { ...s.props, items: res.branding.philosophy } };
+                        }
+                        return s;
+                      });
+                    }
+                    if (res.products && res.products.length > 0) {
+                      gcsSchema.layout = gcsSchema.layout.map(s => {
+                        if (s.type === "featured_products") {
+                          return { ...s, props: { ...s.props, products: res.products } };
+                        }
+                        return s;
+                      });
+                      setProducts(res.products);
+                    }
+                    
+                    const updatedSchema = gcsSchema;
                     setPublishedSchema(updatedSchema);
                     // Persist ID to prevent duplicate stores on republish
                     setStoreSchema(updatedSchema);
@@ -1731,13 +1776,13 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                         name: storeName,
                         category: storeCategory,
                         logo: "",
-                        cover: storeSchema.layout?.find(s => s.type === "hero")?.props?.heroImage || "",
+                        cover: updatedSchema.layout?.find(s => s.type === "hero")?.props?.heroImage || "",
                         trustScore: "99.9%",
                         followers: "1.2K",
-                        desc: storeSchema.layout?.find(s => s.type === "hero")?.props?.subtitle || "Advanced botanical skincare crafted for autonomous commerce excellence.",
+                        desc: updatedSchema.layout?.find(s => s.type === "hero")?.props?.subtitle || "Advanced botanical skincare crafted for autonomous commerce excellence.",
                         isUserStore: true,
-                        customSchema: storeSchema,
-                        storeData: storeData
+                        customSchema: updatedSchema,
+                        storeData: res.storeData || res.branding || storeData
                       };
                       if (existingIndex >= 0) {
                         const next = [...prev];
@@ -1888,7 +1933,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                         </div>
                       )}
                       <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)", color: "#c8b89a", fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 12, border: "1px solid rgba(200,184,154,0.3)" }}>
-                         Live Ecosystem
+                        Live Ecosystem
                       </div>
                     </div>
                     <div style={{ padding: 20, flex: 1, display: "flex", flexDirection: "column" }}>
@@ -1913,13 +1958,26 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                           Edit in Studio
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             if (userStores.length <= 1) {
                               alert("You must keep at least one active store.");
                               return;
                             }
                             if (window.confirm(`Are you sure you want to delete ${store.name}?`)) {
-                              setUserStores(prev => prev.filter(s => s.id !== store.id));
+                              try {
+                                const response = await fetch(`${process.env.VITE_BACKEND_URL || 'https://sera-backend-svv46ebuiq-uc.a.run.app'}/api/stores/${store.id}`, {
+                                  method: 'DELETE'
+                                });
+                                const data = await response.json();
+                                if (data.success) {
+                                  setUserStores(prev => prev.filter(s => s.id !== store.id));
+                                } else {
+                                  alert("Failed to delete store: " + data.error);
+                                }
+                              } catch (err) {
+                                console.error("Error deleting store:", err);
+                                alert("Failed to delete store. See console for details.");
+                              }
                             }
                           }}
                           style={{
@@ -2036,11 +2094,14 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                   globalProps={{
                     onSelectProduct: (prod) => {
                       setSelectedProductDetail({ name: prod.name, price: prod.price, desc: prod.desc || "Premium curated item.", imageUrl: prod.image, store: prod.store || "Store", rating: prod.rating || 4.8, sales: prod.sales || 120 });
-                      if(setModalQty) setModalQty(1);
+                      if (setModalQty) setModalQty(1);
                     },
                     products,
                     items: philosophy,
                     ...storeData,
+                    promoVideos: storeData.promoVideos || (storeData.promoVideo ? [storeData.promoVideo] : []),
+                    storeVideos: storeData.storeVideos || (storeData.storeVideo ? [storeData.storeVideo] : []),
+                    branding: storeData || {},
                     themeColor,
                     heroBg,
                     heroImage,
@@ -2326,7 +2387,17 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                           <button style={{ background: "none", border: "none", color: "#888", cursor: "pointer", marginRight: 12 }} title="Edit">
                             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
                           </button>
-                          <button style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer" }} title="Delete">
+                          <button 
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to delete ${p.name}?`)) {
+                                setProducts(prev => prev.filter(prod => prod.name !== p.name));
+                                setStoreSchema(prev => ({ ...prev, products: prev.products ? prev.products.filter(prod => prod.name !== p.name) : [] }));
+                                setSelectedProducts(prev => prev.filter(name => name !== p.name));
+                              }
+                            }}
+                            style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer" }} 
+                            title="Delete"
+                          >
                             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
                           </button>
                         </td>
@@ -2810,7 +2881,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
           </>
         )}
         {/* BUYER MODE: Center Content Discovery Area */}
-        
+
       </div>
       {/* RIGHT CHAT PANEL — closeable, messages scrollable */}
       {chatOpen && appMode === "seller" && (
@@ -3428,9 +3499,8 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                 <h4 style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 8 }}>DESCRIPTION</h4>
                 <p style={{ fontSize: 14, color: t.subtext, lineHeight: 1.6 }}>{selectedProductDetail.desc}</p>
               </div>
-              <div style={{ marginTop: "auto", background: isDarkMode ? "#1a1a1e" : "#f3f4f6", padding: 16, borderRadius: 12, textAlign: "center" }}>
-                <p style={{ fontSize: 13, color: t.subtext, margin: 0 }}>This is a preview. Buyers will see the "Add to Cart" button here.</p>
-              </div>
+
+
             </div>
           </div>
         </div>

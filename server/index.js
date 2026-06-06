@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { Storage } from '@google-cloud/storage';
 import {
   initLocalDb,
   localInsert,
@@ -11,6 +12,8 @@ import {
   localDelete
 } from './dbHelper.js';
 
+const storage = new Storage();
+const GCS_BUCKET_NAME = 'sera-commerce-assets-495721';
 
 dotenv.config();
 
@@ -38,6 +41,56 @@ const acquireGlobalSlot = async () => {
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+// --- GCS PROXY & UPLOAD HELPER ---
+app.get('/api/assets/:filename', async (req, res) => {
+  try {
+    const file = storage.bucket(GCS_BUCKET_NAME).file(req.params.filename);
+    const [exists] = await file.exists();
+    if (!exists) {
+      return res.status(404).send('Asset not found');
+    }
+    const [metadata] = await file.getMetadata();
+    res.setHeader('Content-Type', metadata.contentType || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    file.createReadStream().pipe(res);
+  } catch (err) {
+    console.error('GCS Proxy Error:', err);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+const uploadToGcs = async (url, req) => {
+  if (!url || !url.startsWith('http')) return url;
+  if (url.includes('storage.googleapis.com') || url.includes('/api/assets/')) return url; // Already permanent
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return url;
+
+    // Extract a safe filename from the URL
+    const urlObj = new URL(url);
+    const filename = urlObj.pathname.split('/').pop() || `asset_${Date.now()}.jpeg`;
+
+    const buffer = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+
+    const file = storage.bucket(GCS_BUCKET_NAME).file(filename);
+    await file.save(Buffer.from(buffer), {
+      contentType,
+      resumable: false
+    });
+
+    // Return our backend proxy URL via HTTPS (forces secure proxy to avoid mixed content)
+    const host = req?.headers?.host || 'sera-backend-svv46ebuiq-uc.a.run.app';
+    const backendUrl = process.env.VITE_BACKEND_URL || (host.includes('localhost') ? `http://${host}` : `https://${host}`);
+    return `${backendUrl}/api/assets/${filename}`;
+  } catch (err) {
+    console.error('Upload to GCS failed:', err.message);
+    return url;
+  }
+};
+
 
 // --- IMAGE PROXY (Bypass domain blocking with Enhanced Retry & Fallback logic) ---
 app.get('/api/proxy-image', async (req, res) => {
@@ -160,9 +213,9 @@ async function setupMCP() {
 
   try {
     const transport = new StdioClientTransport({
-        command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
-        args: ['-y', 'mongodb-mcp-server@latest'],
-        env: { ...process.env, MDB_MCP_CONNECTION_STRING: mongoUri }
+      command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
+      args: ['-y', 'mongodb-mcp-server@latest'],
+      env: { ...process.env, MDB_MCP_CONNECTION_STRING: mongoUri }
     });
     mcpClient = new Client({ name: 'sera-backend-client', version: '1.0.0' }, { capabilities: {} });
     await mcpClient.connect(transport);
@@ -238,7 +291,7 @@ async function callFlexibleMcpTool(possibleNames, args) {
       console.log(`⚡ [Native MongoDB] Bypassing MCP for Tool: "${possibleNames[0]}" | Collection: "${collection}"`);
       const db = global.nativeMongoClient.db('sera');
       const coll = db.collection(collection);
-      
+
       const isFind = possibleNames.some(n => n.includes('find') || n.includes('get'));
       const isInsert = possibleNames.some(n => n.includes('insert') || n.includes('create'));
       const isUpdate = possibleNames.some(n => n.includes('update'));
@@ -338,7 +391,7 @@ async function callFlexibleMcpTool(possibleNames, args) {
               result.documents = Array.isArray(parsed) ? parsed : [parsed];
             } catch (e) { }
           } else {
-             console.log("UNPARSED MCP TEXT:", block.text);
+            console.log("UNPARSED MCP TEXT:", block.text);
           }
         }
       }
@@ -451,33 +504,85 @@ async function generateEmbeddingsInBackground(productsDocs) {
       });
       console.log(`Ã¢Å“â€¦ [Background Embedding] Saved vector for: "${doc.name}"`);
     } catch (err) {
-      console.error(`Ã¢ÂÅ’ [Background Embedding Error] Product "${doc.name}":`, err.message);
+      console.error(`Ã¢Â Å’ [Background Embedding Error] Product "${doc.name}":`, err.message);
     }
   }
 }
 
 // 4. API Endpoint: POST /api/publish
 app.post('/api/publish', async (req, res) => {
-  const { session_id, type, store_id, store_name, category, branding, products } = req.body;
+  const { session_id, type, store_id, store_name, category, branding, products, description, storeData } = req.body;
   if (!store_name || !Array.isArray(products)) {
     return res.status(400).json({ success: false, error: "store_name and products array are required" });
   }
 
+  // Filter out any incomplete AI-generated products
+  const validProducts = products.filter(p =>
+    p.name &&
+    p.name.trim() !== "" &&
+    p.price &&
+    !p.name.toLowerCase().includes("generating") &&
+    !p.name.includes("...")
+  );
+
   // Fallback: If products array is empty, mock at least 1 product so Analytics Data generates successfully
-  if (products.length === 0) {
-    products.push({ id: "mock_1", name: "Featured Item", price: "$29.99", stock: 100, status: "active" });
+  if (validProducts.length === 0) {
+    validProducts.push({ id: "mock_1", name: "Featured Item", price: "$29.99", stock: 100, status: "active" });
   }
 
   const sId = session_id || 'guest_default';
   const sType = type || 'guest';
   const storeId = store_id || `store_${Date.now()}`;
 
+  // Cleanup any existing store data if we are republishing to prevent duplicates
+  if (store_id) {
+    try {
+      await callFlexibleMcpTool(['delete_document', 'delete_many', 'delete-many', 'deleteMany'], { collection: 'stores', filter: { store_id: store_id } });
+      await callFlexibleMcpTool(['delete_document', 'delete_many', 'delete-many', 'deleteMany'], { collection: 'products', filter: { store_id: store_id } });
+      await callFlexibleMcpTool(['delete_document', 'delete_many', 'delete-many', 'deleteMany'], { collection: 'analytics', filter: { store_id: store_id } });
+    } catch (e) {
+      console.error("Cleanup existing store error:", e.message);
+    }
+  }
+
+  // Intercept and upload branding/hero assets to GCS
+  const processedBranding = { ...(branding || {}) };
+  if (processedBranding.heroImage) processedBranding.heroImage = await uploadToGcs(processedBranding.heroImage, req);
+  if (processedBranding.cover) processedBranding.cover = await uploadToGcs(processedBranding.cover, req);
+  if (processedBranding.logo) processedBranding.logo = await uploadToGcs(processedBranding.logo, req);
+  if (processedBranding.videoUrl) processedBranding.videoUrl = await uploadToGcs(processedBranding.videoUrl, req);
+
+  if (processedBranding.storeVideos && Array.isArray(processedBranding.storeVideos)) {
+    processedBranding.storeVideos = await Promise.all(processedBranding.storeVideos.map(vid => uploadToGcs(vid, req)));
+    processedBranding.storeVideo = processedBranding.storeVideos[0];
+  } else if (processedBranding.storeVideo) {
+    processedBranding.storeVideo = await uploadToGcs(processedBranding.storeVideo, req);
+    processedBranding.storeVideos = [processedBranding.storeVideo];
+  }
+
+  if (processedBranding.promoVideos && Array.isArray(processedBranding.promoVideos)) {
+    processedBranding.promoVideos = await Promise.all(processedBranding.promoVideos.map(vid => uploadToGcs(vid, req)));
+    processedBranding.promoVideo = processedBranding.promoVideos[0];
+  } else if (processedBranding.promoVideo) {
+    processedBranding.promoVideo = await uploadToGcs(processedBranding.promoVideo, req);
+    processedBranding.promoVideos = [processedBranding.promoVideo];
+  }
+
+  if (processedBranding.philosophy && Array.isArray(processedBranding.philosophy)) {
+    processedBranding.philosophy = await Promise.all(processedBranding.philosophy.map(async (item) => {
+      if (item.imageUrl) item.imageUrl = await uploadToGcs(item.imageUrl, req);
+      return item;
+    }));
+  }
+
   // Step 1 & 2: Create store document
   const storeDoc = addGuestSessionFields({
     store_id: storeId,
     store_name,
+    description: description || 'An autonomous AI-curated store.',
     category: category || 'default',
-    branding: branding || {},
+    branding: processedBranding,
+    storeData: storeData || {},
     status: 'active'
   }, sId, sType);
 
@@ -491,12 +596,25 @@ app.post('/api/publish', async (req, res) => {
   };
 
   const profile = CATEGORY_PROFILES[category ? category.toLowerCase() : 'default'] || CATEGORY_PROFILES.default;
-  const totalProds = products.length;
+  const totalProds = validProducts.length;
 
   const productsDocs = [];
   const analyticsDocs = [];
 
-  products.forEach((prod, index) => {
+  // Process products asynchronously to handle GCS uploads
+  const processedProducts = await Promise.all(validProducts.map(async (prod) => {
+    // Intercept and upload image/video assets to GCS
+    if (prod.imageUrl) prod.imageUrl = await uploadToGcs(prod.imageUrl, req);
+    if (prod.verifiedUrl) prod.verifiedUrl = await uploadToGcs(prod.verifiedUrl, req);
+    if (prod.pendingUrl) prod.pendingUrl = await uploadToGcs(prod.pendingUrl, req);
+    if (prod.image) prod.image = await uploadToGcs(prod.image, req);
+    if (prod.videoUrl) prod.videoUrl = await uploadToGcs(prod.videoUrl, req);
+    if (prod.verticalVideoUrl) prod.verticalVideoUrl = await uploadToGcs(prod.verticalVideoUrl, req);
+    if (prod.landscapeVideoUrl) prod.landscapeVideoUrl = await uploadToGcs(prod.landscapeVideoUrl, req);
+    return prod;
+  }));
+
+  processedProducts.forEach((prod, index) => {
     const prodId = `prod_${Date.now()}_${index}`;
 
     // Step 3: Add fields to product
@@ -525,7 +643,7 @@ app.post('/api/publish', async (req, res) => {
 
     const clicks = Math.floor(views * ctr);
     const purchased = Math.floor(views * conversion_rate);
-    const numericPrice = typeof prod.price === 'string' ? parseFloat(prod.price.replace(/[^0-9.-]+/g,"")) : (prod.price || 0);
+    const numericPrice = typeof prod.price === 'string' ? parseFloat(prod.price.replace(/[^0-9.-]+/g, "")) : (prod.price || 0);
     const revenue_30d = purchased * (numericPrice || 0);
 
     // Trend determination (30% rising, 30% stable, 40% declining)
@@ -565,7 +683,7 @@ app.post('/api/publish', async (req, res) => {
       { source: "TikTok", percentage: Math.floor(10 + Math.random() * 40) },
       { source: "Organic Search", percentage: Math.floor(5 + Math.random() * 20) }
     ];
-    
+
     const top_demographic = ["Gen Z (18-24)", "Millennials (25-34)", "Gen X (35-44)"][Math.floor(Math.random() * 3)];
     const mobile_usage = Math.floor(60 + Math.random() * 30); // 60% to 90% mobile
 
@@ -630,7 +748,10 @@ app.post('/api/publish', async (req, res) => {
       store_name,
       product_count: productsDocs.length,
       analytics_generated: true,
-      message: "Store published successfully"
+      message: "Store published successfully",
+      branding: processedBranding,
+      storeData: storeDoc.storeData,
+      products: productsDocs
     });
   } catch (err) {
     console.error("Ã¢Â Å’ POST /api/publish error:", err.message);
@@ -770,21 +891,21 @@ app.post('/api/search-products', async (req, res) => {
           if (docs.length > 0) {
             const currentViews = docs[0].views || 0;
             const currentClicks = docs[0].clicks || 0;
-            
+
             // Simulasikan interaksi: +1 views, +1 click jika relevansi sangat tinggi
             const incViews = 1;
             const incClicks = r.score > 0.75 ? 1 : 0;
-            
+
             await callFlexibleMcpTool(['update_document', 'update-one', 'updateOne'], {
               collection: 'analytics',
               filter: { product_id: r.product_id },
               update: { $set: { views: currentViews + incViews, clicks: currentClicks + incClicks } }
             });
           }
-        } catch(e) {
+        } catch (e) {
           console.error("Failed to track buyer search event:", e.message);
         }
-      })).catch(() => {});
+      })).catch(() => { });
     }
 
     return res.json({
@@ -816,7 +937,7 @@ app.get('/api/analytics', async (req, res) => {
     });
 
     let analytics = response?.documents || response?.result || response?.data || [];
-    
+
     // If no analytics data found from DB, dynamically generate from products collection
     if (!analytics || analytics.length === 0) {
       const prodRes = await callFlexibleMcpTool(['find_documents', 'find', 'findDocuments'], {
@@ -825,7 +946,7 @@ app.get('/api/analytics', async (req, res) => {
         query: { store_id }
       });
       const products = prodRes?.documents || prodRes?.result || prodRes?.data || [];
-      
+
       analytics = products.map((p, idx) => {
         const rev = 1200 + (idx * 350) + (Math.random() * 500);
         const conv = 2.5 + (idx * 0.5) + (Math.random() * 1.5);
@@ -833,12 +954,12 @@ app.get('/api/analytics', async (req, res) => {
         let flag = 'healthy';
         if (score < 65) flag = 'critical';
         else if (score < 75) flag = 'needs_boost';
-        
+
         return {
           id: p.id || p._id || `a_${idx}`,
           store_id,
           product_id: p.id || p._id,
-          name: p.name || `Product ${idx+1}`,
+          name: p.name || `Product ${idx + 1}`,
           price: p.price || "$0",
           revenue_30d: rev,
           conversion_rate: conv,
@@ -849,15 +970,15 @@ app.get('/api/analytics', async (req, res) => {
       });
     }
     console.log("ANALYTICS DOCS REVENUE:", analytics.map(a => ({ name: a.name, price: a.price, revenue_30d: a.revenue_30d })));
-    
+
     const total_products = analytics.length;
     const healthy = analytics.filter(a => a.flag === 'healthy').length;
     const needs_boost = analytics.filter(a => a.flag === 'needs_boost').length;
     const critical = analytics.filter(a => a.flag === 'critical').length;
     const total_revenue = analytics.reduce((sum, a) => sum + (a.revenue_30d || 0), 0);
-    
+
     console.log("CALCULATED TOTAL REVENUE:", total_revenue);
-    
+
     const avg_conversion = total_products > 0
       ? analytics.reduce((sum, a) => sum + (a.conversion_rate || 0), 0) / total_products
       : 0;
@@ -878,8 +999,32 @@ app.get('/api/analytics', async (req, res) => {
       products: sortedProducts
     });
   } catch (err) {
-    console.error("Ã¢ÂÅ’ GET /api/analytics error:", err.message);
+    console.error("Ã¢Â Å’ GET /api/analytics error:", err.message);
     return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API Endpoint: DELETE /api/stores/:id
+app.delete('/api/stores/:id', async (req, res) => {
+  try {
+    const storeId = req.params.id;
+    if (!storeId) {
+      return res.status(400).json({ success: false, error: "Store ID is required" });
+    }
+
+    // Delete store
+    await callFlexibleMcpTool(['delete_document', 'delete_many', 'delete-many', 'deleteMany'], { collection: 'stores', filter: { store_id: storeId } });
+
+    // Delete products for this store
+    await callFlexibleMcpTool(['delete_document', 'delete_many', 'delete-many', 'deleteMany'], { collection: 'products', filter: { store_id: storeId } });
+
+    // Delete analytics for this store
+    await callFlexibleMcpTool(['delete_document', 'delete_many', 'delete-many', 'deleteMany'], { collection: 'analytics', filter: { store_id: storeId } });
+
+    res.json({ success: true, message: `Store ${storeId} deleted successfully` });
+  } catch (err) {
+    console.error('Delete Store Error:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -907,10 +1052,7 @@ app.get('/api/stores', async (req, res) => {
     const storesList = response?.documents || response?.result || response?.data || [];
     console.log("STORE COUNT:", storesList.length);
 
-    return res.json({
-      success: true,
-      stores: storesList
-    });
+    const productsResponse = await callFlexibleMcpTool(['find_documents', 'find', 'findDocuments'], { collection: 'products', limit: 10000 }); const allProducts = productsResponse?.documents || productsResponse?.result || productsResponse?.data || []; const storesWithProducts = storesList.map(store => { const storeProds = allProducts.filter(p => String(p.store_id) === String(store.store_id) || String(p.store_id) === String(store.id) || String(p.store_id) === String(store._id)); return { ...store, products: storeProds }; }); return res.json({ success: true, stores: storesWithProducts });
   } catch (err) {
     console.error("Ã¢ÂÅ’ GET /api/stores error:", err.message);
     return res.status(500).json({ success: false, error: err.message });
@@ -1305,3 +1447,4 @@ app.listen(port, '0.0.0.0', () => {
   console.log(`🚀 SERA Backend listening at http://0.0.0.0:${port}`);
   console.log(`=========================================\n`);
 });
+
