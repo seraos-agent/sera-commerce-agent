@@ -3,7 +3,7 @@ import { StoreProvider, useStore } from '../../store/storeContext';
 
 import confetti from "canvas-confetti";
 import SeraAgentMessage from "../../SeraAgentMessage";
-import { sendChat, rememberAction, BACKEND_URL, searchProducts, publishStore, getAnalytics } from "../../lib/agentApi";
+import { sendChat, rememberAction, BACKEND_URL, searchProducts, publishStore, getAnalytics, getStores } from "../../lib/agentApi";
 
 import {
   sanitizePrompt,
@@ -165,6 +165,45 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
       }
     }
   }, [activeNav, userStores, activeAnalyticsStoreId]);
+
+  // Sync published stores from backend on load
+  useEffect(() => {
+    let isMounted = true;
+    getStores(getSessionId()).then(res => {
+      if (res.success && res.stores && isMounted) {
+        setUserStores(prev => {
+          const merged = [...prev];
+          res.stores.forEach(dbStore => {
+            const storeId = dbStore.store_id || dbStore.id || dbStore._id;
+            const mappedStore = {
+              id: storeId,
+              name: dbStore.store_name || dbStore.name || "Unknown Store",
+              category: dbStore.category || "General",
+              logo: dbStore.branding?.logo || "",
+              cover: dbStore.branding?.heroImage || dbStore.branding?.cover || "",
+              trustScore: "99.9%",
+              followers: "1.2K",
+              desc: dbStore.description || "",
+              isUserStore: true,
+              customSchema: dbStore.customSchema || null,
+              storeData: dbStore.storeData || dbStore.branding || {}
+            };
+            const idx = merged.findIndex(s => s.id === storeId);
+            if (idx >= 0) {
+              // Only overwrite if customSchema is valid
+              if (mappedStore.customSchema) {
+                merged[idx] = mappedStore;
+              }
+            } else {
+              merged.push(mappedStore);
+            }
+          });
+          return merged;
+        });
+      }
+    }).catch(err => console.error("Failed to sync DB stores:", err));
+    return () => { isMounted = false; };
+  }, []);
   useEffect(() => {
     if (activeNav === "analytics" && activeAnalyticsStoreId) {
       let isMounted = true;
@@ -191,6 +230,29 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
       localStorage.setItem("sera_hackathon_user_stores", JSON.stringify(userStores));
     } catch (e) { console.error(e); }
   }, [userStores]);
+
+  // Auto-sync active storeSchema to userStores to prevent data loss on navigation
+  useEffect(() => {
+    if (storeSchema && storeSchema.id) {
+      setUserStores(prev => {
+        let changed = false;
+        const next = prev.map(s => {
+          if (s.id === storeSchema.id) {
+            if (s.customSchema === storeSchema) return s;
+            changed = true;
+            return {
+              ...s,
+              customSchema: storeSchema,
+              storeData: storeSchema.layout?.find(l => l.type === "hero")?.props || s.storeData
+            };
+          }
+          return s;
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [storeSchema, setUserStores]);
+
   const filteredStores = useMemo(() => {
     const allCuratedStores = [...userStores, ...CURATED_STORES];
     return allCuratedStores
@@ -200,7 +262,8 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
   // Legacy state aliases (Fully bulletproof optional chaining)
   const products = storeSchema.layout.find(s => s.type === "featured_products")?.props?.products || [];
   const philosophy = storeSchema.layout.find(s => s.type === "philosophy")?.props?.items || [];
-  const storeData = storeSchema.layout.find(s => s.type === "hero")?.props || {};
+  const heroProps = storeSchema.layout.find(s => s.type === "hero")?.props || {};
+  const storeData = { ...heroProps, ...heroProps.branding };
   const testimonials = storeSchema.testimonials || [];
   const faq = storeSchema.faq || [];
   const footerData = storeSchema.footer || {};
@@ -1723,13 +1786,14 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                         buttonText: storeData.buttonText || storeSchema.layout?.find(s => s.type === "hero")?.props?.buttonText,
                         promoBanner: storeData.promoBanner || storeSchema.layout?.find(s => s.type === "hero")?.props?.promoBanner,
                         heroVariant: storeData.heroVariant || storeSchema.layout?.find(s => s.type === "hero")?.props?.heroVariant,
-                        storeVideo: storeData.storeVideo || (storeData.storeVideos && storeData.storeVideos[0]) || storeData.branding?.storeVideo || (storeData.branding?.storeVideos && storeData.branding?.storeVideos[0]) || "",
-                        promoVideo: storeData.promoVideo || (storeData.promoVideos && storeData.promoVideos[0]) || storeData.branding?.promoVideo || (storeData.branding?.promoVideos && storeData.branding?.promoVideos[0]) || "",
-                        storeVideos: storeData.storeVideos || (storeData.storeVideo ? [storeData.storeVideo] : []) || storeData.branding?.storeVideos || [],
-                        promoVideos: storeData.promoVideos || (storeData.promoVideo ? [storeData.promoVideo] : []) || storeData.branding?.promoVideos || [],
+                        storeVideo: storeData.storeVideo || (storeData.storeVideos && storeData.storeVideos.length > 0 ? storeData.storeVideos[0] : "") || storeData.branding?.storeVideo || "",
+                        promoVideo: storeData.promoVideo || (storeData.promoVideos && storeData.promoVideos.length > 0 ? storeData.promoVideos[0] : "") || storeData.branding?.promoVideo || "",
+                        storeVideos: (storeData.storeVideos && storeData.storeVideos.length > 0) ? storeData.storeVideos : (storeData.storeVideo ? [storeData.storeVideo] : []),
+                        promoVideos: (storeData.promoVideos && storeData.promoVideos.length > 0) ? storeData.promoVideos : (storeData.promoVideo ? [storeData.promoVideo] : []),
                         philosophy: storeSchema.layout?.find(s => s.type === "philosophy")?.props?.items || []
                       },
                       storeData: storeData,
+                      customSchema: storeSchema,
                       products: productsList,
                       type: "seller"
                     };
@@ -1747,7 +1811,10 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                     if (res.branding) {
                       gcsSchema.layout = gcsSchema.layout.map(s => {
                         if (s.type === "hero") {
-                          return { ...s, props: { ...s.props, ...res.branding } };
+                          const safeBranding = { ...res.branding };
+                          // Remove undefined values to prevent overwriting existing valid URLs
+                          Object.keys(safeBranding).forEach(key => { if (safeBranding[key] === undefined) delete safeBranding[key]; });
+                          return { ...s, props: { ...s.props, ...safeBranding } };
                         }
                         if (s.type === "philosophy" && res.branding.philosophy) {
                           return { ...s, props: { ...s.props, items: res.branding.philosophy } };
@@ -2368,7 +2435,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                             <p style={{ color: "#666", fontSize: 11, marginTop: 2 }}>{p.desc}</p>
                           </div>
                         </td>
-                        <td style={{ padding: "16px", color: "#c8b89a", fontWeight: 600 }}>{p.price}</td>
+                        <td style={{ padding: "16px", color: isDarkMode ? "#c8b89a" : "#8b7355", fontWeight: 600 }}>{p.price}</td>
                         <td style={{ padding: "16px", color: "#e8e6e1" }}>{45 + (i * 7 % 13)} in stock</td>
                         <td style={{ padding: "16px" }}>
                           <span style={{ padding: "4px 8px", background: "rgba(74, 222, 128, 0.1)", color: "#4ade80", borderRadius: 4, fontSize: 11, fontWeight: 500 }}>Active</span>
@@ -2753,8 +2820,8 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16 }}>
                       {[
                         { code: "GLOWUP20", discount: "20% OFF", uses: "142 / 500", status: "Active" },
-                        { code: "WELCOME10", discount: "10% OFF", uses: "89 / âˆž", status: "Active" },
-                        { code: "FREESHIP", discount: "Free Shipping", uses: "312 / âˆž", status: "Active" },
+                        { code: "WELCOME10", discount: "10% OFF", uses: "89 / ∞", status: "Active" },
+                        { code: "FREESHIP", discount: "Free Shipping", uses: "312 / ∞", status: "Active" },
                       ].map((promo, i) => (
                         <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px", background: isDarkMode ? "#0f0f10" : "#ffffff", borderRadius: 8, border: `1px dashed ${t.border}` }}>
                           <div>
@@ -2783,7 +2850,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                               return imgUrl ? (
                                 <img src={imgUrl} alt={p.name} style={{ width: 72, height: 72, minWidth: 72, minHeight: 72, flexShrink: 0, objectFit: "cover", borderRight: `1px solid ${t.border}` }} />
                               ) : (
-                                <div style={{ width: 72, height: 72, minWidth: 72, minHeight: 72, flexShrink: 0, background: isDarkMode ? "#2a2a2e" : "#e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, borderRight: `1px solid ${t.border}` }}>ðŸ›ï¸</div>
+                                <div style={{ width: 72, height: 72, minWidth: 72, minHeight: 72, flexShrink: 0, background: isDarkMode ? "#2a2a2e" : "#e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, borderRight: `1px solid ${t.border}` }}>🛍️</div>
                               );
                             })()}
                             <div style={{ padding: "12px 0" }}>
@@ -3389,7 +3456,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                         <button
                           onClick={() => setPendingImages(prev => prev.filter((_, i) => i !== idx))}
                           style={{ position: "absolute", top: 2, right: 2, background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%", width: 16, height: 16, color: "#fff", fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                        >Ã—</button>
+                        >×</button>
                       </div>
                     ))}
                   </div>
@@ -3492,8 +3559,8 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                 <button onClick={() => setSelectedProductDetail(null)} style={{ background: "none", border: "none", color: t.subtext, cursor: "pointer", fontSize: 20 }}>&times;</button>
               </div>
               <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, fontWeight: 700, color: t.text, marginBottom: 16 }}>{selectedProductDetail.name}</h2>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-                <span style={{ fontSize: 24, fontWeight: 800, color: "#c8b89a" }}>{selectedProductDetail.price}</span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+                <span style={{ fontSize: 24, fontWeight: 800, color: isDarkMode ? "#c8b89a" : "#8b7355" }}>{selectedProductDetail.price}</span>
               </div>
               <div style={{ borderTop: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}`, paddingTop: 20, marginBottom: 28 }}>
                 <h4 style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 8 }}>DESCRIPTION</h4>

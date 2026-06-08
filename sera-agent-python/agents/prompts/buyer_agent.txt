@@ -20,8 +20,9 @@ You MUST follow this format strictly. No exceptions.
 ✅ Use **bold** for product names and prices.
 
 ## Rich Media UI Elements
-When recommending products, you MUST include their image and a store link button using markdown:
-- **Image format**: `![Product Name](image_url)` (Put the image URL exactly as returned by tools).
+When recommending products or displaying stores, you MUST include their image and a store link button using markdown:
+- **Product Image format**: `![Product Name](image_url)` (Put the image URL exactly as returned by tools).
+- **Store Image format**: `![Store Name](branding_image_url)` (Use the store's `branding.heroImage` or `branding.cover` if available).
 - **Store Link format**: `[View Store](#store_STORE_ID)` (Replace STORE_ID with the actual store ID).
 
 ## Example of CORRECT format:

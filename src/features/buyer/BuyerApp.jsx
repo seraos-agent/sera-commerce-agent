@@ -82,7 +82,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
               category: match.category || "General",
               cover: cover,
               isUserStore: match.session_id === getSessionId(),
-              customSchema: {
+              customSchema: match.customSchema || {
                 id: id,
                 name: name,
                 category: match.category || "General",
@@ -238,7 +238,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                 category: match.category || "General",
                 cover: cover,
                 isUserStore: match.session_id === getSessionId(),
-                customSchema: {
+                customSchema: match.customSchema || {
                   id: id,
                   name: name,
                   category: match.category || "General",
@@ -715,7 +715,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                       <h4 style={{ fontSize: 15, fontWeight: 700, color: t.text, marginBottom: 4, lineHeight: 1.3 }}>{prod.name}</h4>
                       <p style={{ fontSize: 12, color: t.subtext, marginBottom: 12, lineHeight: 1.4, flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{prod.desc}</p>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12, borderTop: `1px solid ${t.border}` }}>
-                        <span style={{ fontSize: 15, fontWeight: 800, color: "#c8b89a" }}>{prod.price}</span>
+                        <span style={{ fontSize: 15, fontWeight: 800, color: isDarkMode ? "#c8b89a" : "#8b7355" }}>{prod.price}</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: t.subtext }}>
                           <span>⭐ {prod.rating}</span>
                           <span>•</span>
@@ -1168,14 +1168,16 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                   <button onClick={() => setSelectedProductDetail(null)} style={{ background: "none", border: "none", color: t.subtext, cursor: "pointer", fontSize: 20 }}>&times;</button>
                 </div>
                 <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, fontWeight: 700, color: t.text, marginBottom: 16, lineHeight: 1.2 }}>{selectedProductDetail.name}</h2>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-                  <span style={{ fontSize: 24, fontWeight: 800, color: "#c8b89a" }}>{selectedProductDetail.price}</span>
-                  <span style={{ fontSize: 13, color: "#c8b89a", background: isDarkMode ? "#111113" : "#f3f4f6", padding: "4px 10px", borderRadius: 6, border: `1px solid ${t.border}` }}>
-                    • {getStockCount(selectedProductDetail.name)} in stock
-                  </span>
-                  {selectedProductDetail.rating && (
-                    <span style={{ fontSize: 13, color: t.subtext, background: isDarkMode ? "#111113" : "#f3f4f6", padding: "4px 10px", borderRadius: 6 }}>⭐ {selectedProductDetail.rating} • {selectedProductDetail.sales}</span>
-                  )}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+                  <span style={{ fontSize: 24, fontWeight: 800, color: isDarkMode ? "#c8b89a" : "#8b7355" }}>{selectedProductDetail.price}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ fontSize: 13, color: "#c8b89a", background: isDarkMode ? "#111113" : "#f3f4f6", padding: "4px 10px", borderRadius: 6, border: `1px solid ${t.border}` }}>
+                      • {getStockCount(selectedProductDetail.name)} in stock
+                    </span>
+                    {selectedProductDetail.rating && (
+                      <span style={{ fontSize: 13, color: t.subtext, background: isDarkMode ? "#111113" : "#f3f4f6", padding: "4px 10px", borderRadius: 6 }}>⭐ {selectedProductDetail.rating} • {selectedProductDetail.sales}</span>
+                    )}
+                  </div>
                 </div>
                 <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 20, marginBottom: 28 }}>
                   <h4 style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Description</h4>
@@ -1248,7 +1250,9 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                     <div style={{ flex: 1 }}>
                       <h4 style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 4 }}>{item.name}</h4>
                       <p style={{ fontSize: 12, color: t.subtext, marginBottom: 8 }}>{item.store} • Qty: {item.qty}</p>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: "#c8b89a" }}>{formatPriceStr(item.priceNum * item.qty, item.price)}</span>
+                      <div>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: isDarkMode ? "#c8b89a" : "#8b7355" }}>{formatPriceStr(item.priceNum * item.qty, item.price)}</span>
+                    </div>
                     </div>
                     <button
                       onClick={() => setCart(prev => prev.filter(c => c.id !== item.id))}

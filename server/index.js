@@ -552,7 +552,7 @@ app.post('/api/publish', async (req, res) => {
   if (processedBranding.logo) processedBranding.logo = await uploadToGcs(processedBranding.logo, req);
   if (processedBranding.videoUrl) processedBranding.videoUrl = await uploadToGcs(processedBranding.videoUrl, req);
 
-  if (processedBranding.storeVideos && Array.isArray(processedBranding.storeVideos)) {
+  if (processedBranding.storeVideos && Array.isArray(processedBranding.storeVideos) && processedBranding.storeVideos.length > 0) {
     processedBranding.storeVideos = await Promise.all(processedBranding.storeVideos.map(vid => uploadToGcs(vid, req)));
     processedBranding.storeVideo = processedBranding.storeVideos[0];
   } else if (processedBranding.storeVideo) {
@@ -560,7 +560,7 @@ app.post('/api/publish', async (req, res) => {
     processedBranding.storeVideos = [processedBranding.storeVideo];
   }
 
-  if (processedBranding.promoVideos && Array.isArray(processedBranding.promoVideos)) {
+  if (processedBranding.promoVideos && Array.isArray(processedBranding.promoVideos) && processedBranding.promoVideos.length > 0) {
     processedBranding.promoVideos = await Promise.all(processedBranding.promoVideos.map(vid => uploadToGcs(vid, req)));
     processedBranding.promoVideo = processedBranding.promoVideos[0];
   } else if (processedBranding.promoVideo) {
@@ -574,17 +574,6 @@ app.post('/api/publish', async (req, res) => {
       return item;
     }));
   }
-
-  // Step 1 & 2: Create store document
-  const storeDoc = addGuestSessionFields({
-    store_id: storeId,
-    store_name,
-    description: description || 'An autonomous AI-curated store.',
-    category: category || 'default',
-    branding: processedBranding,
-    storeData: storeData || {},
-    status: 'active'
-  }, sId, sType);
 
   // Category profiles for Metrics Generator
   const CATEGORY_PROFILES = {
@@ -613,6 +602,35 @@ app.post('/api/publish', async (req, res) => {
     if (prod.landscapeVideoUrl) prod.landscapeVideoUrl = await uploadToGcs(prod.landscapeVideoUrl, req);
     return prod;
   }));
+
+  // Update customSchema with permanent GCS URLs so MongoDB saves the permanent URLs
+  let finalCustomSchema = req.body.customSchema || null;
+  if (finalCustomSchema && finalCustomSchema.layout) {
+    finalCustomSchema.layout = finalCustomSchema.layout.map(s => {
+      if (s.type === "hero" && processedBranding) {
+        return { ...s, props: { ...s.props, ...processedBranding } };
+      }
+      if (s.type === "philosophy" && processedBranding && processedBranding.philosophy) {
+        return { ...s, props: { ...s.props, items: processedBranding.philosophy } };
+      }
+      if (s.type === "featured_products" && processedProducts && processedProducts.length > 0) {
+        return { ...s, props: { ...s.props, products: processedProducts } };
+      }
+      return s;
+    });
+  }
+
+  // Step 1 & 2: Create store document
+  const storeDoc = addGuestSessionFields({
+    store_id: storeId,
+    store_name,
+    description: description || 'An autonomous AI-curated store.',
+    category: category || 'default',
+    branding: processedBranding,
+    storeData: storeData || {},
+    customSchema: finalCustomSchema,
+    status: 'active'
+  }, sId, sType);
 
   processedProducts.forEach((prod, index) => {
     const prodId = `prod_${Date.now()}_${index}`;

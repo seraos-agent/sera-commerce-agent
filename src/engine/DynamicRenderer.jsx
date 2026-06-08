@@ -40,6 +40,8 @@ export function DynamicRenderer({ layout, globalProps }) {
               if (sVids.length === 0 && typeof globalProps.storeVideo === 'string' && globalProps.storeVideo.trim() !== "") sVids = [globalProps.storeVideo];
               if (sVids.length === 0 && Array.isArray(globalProps.branding?.storeVideos)) sVids = globalProps.branding.storeVideos.filter(v => typeof v === 'string' && v.trim() !== "");
               if (sVids.length === 0 && typeof globalProps.branding?.storeVideo === 'string' && globalProps.branding.storeVideo.trim() !== "") sVids = [globalProps.branding.storeVideo];
+              if (sVids.length === 0 && Array.isArray(section.props?.storeVideos)) sVids = section.props.storeVideos.filter(v => typeof v === 'string' && v.trim() !== "");
+              if (sVids.length === 0 && typeof section.props?.storeVideo === 'string' && section.props.storeVideo.trim() !== "") sVids = [section.props.storeVideo];
               if (sVids.length === 0) return null;
               return (
                 <section style={{ padding: "60px 40px", background: globalProps.isDarkMode ? "#0f0f10" : "#ffffff" }}>
@@ -69,6 +71,9 @@ export function DynamicRenderer({ layout, globalProps }) {
               if (pVids.length === 0 && Array.isArray(globalProps.branding?.promoVideos)) pVids = globalProps.branding.promoVideos.filter(v => typeof v === 'string' && v.trim() !== "");
               if (pVids.length === 0 && typeof globalProps.branding?.promoVideo === 'string' && globalProps.branding.promoVideo.trim() !== "") pVids = [globalProps.branding.promoVideo];
               if (pVids.length === 0 && typeof globalProps.branding?.videoUrl === 'string' && globalProps.branding.videoUrl.trim() !== "") pVids = [globalProps.branding.videoUrl];
+              if (pVids.length === 0 && Array.isArray(section.props?.promoVideos)) pVids = section.props.promoVideos.filter(v => typeof v === 'string' && v.trim() !== "");
+              if (pVids.length === 0 && typeof section.props?.promoVideo === 'string' && section.props.promoVideo.trim() !== "") pVids = [section.props.promoVideo];
+              if (pVids.length === 0 && typeof section.props?.videoUrl === 'string' && section.props.videoUrl.trim() !== "") pVids = [section.props.videoUrl];
               if (pVids.length === 0) return null;
               return (
                 <section style={{ padding: "80px 40px", background: globalProps.isDarkMode ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)", borderTop: `1px solid ${globalProps.isDarkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
