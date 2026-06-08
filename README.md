@@ -340,7 +340,7 @@ Our long-term vision is to democratize commerce through autonomous AI.
 
 YouTube Demo:
 
-*(Add Demo Link)*
+[![Watch Demo](https://img.youtube.com/vi/BP1vJ2zTqHo/maxresdefault.jpg)](https://youtu.be/BP1vJ2zTqHo)
 
 ---
 
