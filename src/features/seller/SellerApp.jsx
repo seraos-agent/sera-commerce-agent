@@ -130,6 +130,8 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
   // --- CONSOLIDATED STORE SCHEMA ---
 
   const [chatWidth, setChatWidth] = useState(380);
+  const [isAttachMenuOpen, setIsAttachMenuOpen] = useState(false);
+  const [openActionMenuId, setOpenActionMenuId] = useState(null);
   const [isResizing, setIsResizing] = useState(false);
   const startResizing = (e) => {
     e.preventDefault();
@@ -2451,33 +2453,31 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                         <td style={{ padding: "16px" }}>
                           <span style={{ padding: "4px 8px", background: "rgba(74, 222, 128, 0.1)", color: "#4ade80", borderRadius: 4, fontSize: 11, fontWeight: 500 }}>Active</span>
                         </td>
-                        <td style={{ padding: "16px", textAlign: "right" }}>
-                          <button
-                            onClick={() => {
-                              const prompt = `Regenerate a high-quality cinematic image for product: ${p.name}`;
-                              sendMessage(prompt);
-                            }}
-                            style={{ background: "none", border: "none", color: "#c8b89a", cursor: "pointer", marginRight: 12 }}
-                            title="Regenerate Image"
-                          >
-                            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 2v6h-6"></path><path d="M3 12a.9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
-                          </button>
-                          <button style={{ background: "none", border: "none", color: "#888", cursor: "pointer", marginRight: 12 }} title="Edit">
-                            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
-                          </button>
+                        <td style={{ padding: "16px", textAlign: "right", position: "relative" }}>
                           <button 
-                            onClick={() => {
-                              if (window.confirm(`Are you sure you want to delete ${p.name}?`)) {
-                                setProducts(prev => prev.filter(prod => prod.name !== p.name));
-                                setStoreSchema(prev => ({ ...prev, products: prev.products ? prev.products.filter(prod => prod.name !== p.name) : [] }));
-                                setSelectedProducts(prev => prev.filter(name => name !== p.name));
-                              }
-                            }}
-                            style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer" }} 
-                            title="Delete"
+                            onClick={(e) => { e.stopPropagation(); setOpenActionMenuId(openActionMenuId === p.name ? null : p.name); }}
+                            style={{ background: isDarkMode ? "#1e1e22" : "#f3f4f6", border: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}`, color: t.text, cursor: "pointer", padding: "6px 8px", borderRadius: 8, transition: "background 0.2s" }}
+                            onMouseEnter={e => e.currentTarget.style.background = isDarkMode ? "#2a2a2e" : "#e5e7eb"}
+                            onMouseLeave={e => e.currentTarget.style.background = isDarkMode ? "#1e1e22" : "#f3f4f6"}
                           >
-                            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
+                            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
                           </button>
+                          {openActionMenuId === p.name && (
+                            <>
+                              <div onClick={(e) => { e.stopPropagation(); setOpenActionMenuId(null); }} style={{ position: "fixed", inset: 0, zIndex: 90 }} />
+                              <div style={{ position: "absolute", right: "16px", top: "60%", background: isDarkMode ? "#1e1e22" : "#ffffff", border: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}`, borderRadius: 12, padding: "8px", width: 170, boxShadow: "0 10px 30px rgba(0,0,0,0.5)", zIndex: 100, display: "flex", flexDirection: "column", gap: 4, textAlign: "left" }}>
+                                <div onClick={() => { setOpenActionMenuId(null); sendMessage(`Regenerate a high-quality cinematic image for product: ${p.name}`); }} style={{ padding: "8px 12px", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", color: "#c8b89a", fontSize: 12, fontWeight: 600, transition: "background 0.2s" }} onMouseEnter={e => e.currentTarget.style.background = isDarkMode ? "#2a2a2e" : "#f3f4f6"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 2v6h-6"></path><path d="M3 12a.9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg> Regenerate Image
+                                </div>
+                                <div onClick={() => setOpenActionMenuId(null)} style={{ padding: "8px 12px", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", color: t.text, fontSize: 12, fontWeight: 500, transition: "background 0.2s" }} onMouseEnter={e => e.currentTarget.style.background = isDarkMode ? "#2a2a2e" : "#f3f4f6"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg> Edit Details
+                                </div>
+                                <div onClick={() => { setOpenActionMenuId(null); if (window.confirm(`Are you sure you want to delete ${p.name}?`)) { setProducts(prev => prev.filter(prod => prod.name !== p.name)); setStoreSchema(prev => ({ ...prev, products: prev.products ? prev.products.filter(prod => prod.name !== p.name) : [] })); setSelectedProducts(prev => prev.filter(name => name !== p.name)); } }} style={{ padding: "8px 12px", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", color: "#ef4444", fontSize: 12, fontWeight: 500, transition: "background 0.2s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg> Delete Product
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -3033,7 +3033,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <button
                 onClick={() => {
-                  setMessages([{ role: "agent", text: "Hello I'm SERA, ready when you are.", action: "idle", hasAction: false }]);
+                  setMessages([{ role: "agent", text: "What would you like to build?", action: "idle", hasAction: false }]);
                   setSteps([]);
                   try {
                     localStorage.removeItem("sera_hackathon_messages");
@@ -3490,16 +3490,64 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                     ))}
                   </div>
                 )}
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 8, position: "relative" }}>
                   <button
-                    onClick={() => fileInputRef.current?.click()}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "#888", display: "flex", alignItems: "center", padding: "4px" }}
-                    title="Upload Image"
+                    onClick={() => setIsAttachMenuOpen(!isAttachMenuOpen)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#888", display: "flex", alignItems: "center", padding: "4px", transition: "transform 0.2s", transform: isAttachMenuOpen ? "rotate(45deg)" : "none" }}
+                    title="Upload or Attach File"
                   >
                     <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                   </button>
+                  {isAttachMenuOpen && (
+                    <>
+                      <div onClick={() => setIsAttachMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 90 }} />
+                      <div style={{
+                      position: "absolute",
+                      bottom: "100%",
+                      left: 0,
+                      marginBottom: 12,
+                      background: isDarkMode ? "#1e1e22" : "#ffffff",
+                      border: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}`,
+                      borderRadius: 12,
+                      padding: "8px",
+                      width: 200,
+                      boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+                      zIndex: 100,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4
+                    }}>
+                      <div
+                        onClick={() => {
+                          setIsAttachMenuOpen(false);
+                          fileInputRef.current?.click();
+                        }}
+                        style={{ padding: "8px 12px", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", background: isDarkMode ? "#2a2a2e" : "#f3f4f6", color: isDarkMode ? "#e5e7eb" : "#111", fontSize: 12, fontWeight: 600, transition: "background 0.2s" }}
+                        onMouseEnter={e => e.currentTarget.style.background = isDarkMode ? "#3f3f46" : "#e5e7eb"}
+                        onMouseLeave={e => e.currentTarget.style.background = isDarkMode ? "#2a2a2e" : "#f3f4f6"}
+                      >
+                        <span style={{ fontSize: 16 }}>📷</span> Image
+                      </div>
+                      <div style={{ padding: "8px 12px", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, cursor: "not-allowed", color: isDarkMode ? "#9ca3af" : "#6b7280", fontSize: 12, fontWeight: 500 }} title="Coming Soon">
+                        <span style={{ fontSize: 16, fontFamily: '"Segoe UI Emoji", "Apple Color Emoji", sans-serif' }}>📄</span> PDF <span style={{ marginLeft: "auto", fontSize: 10, background: isDarkMode ? "#374151" : "#e5e7eb", padding: "2px 6px", borderRadius: 4, opacity: 0.7 }}>Soon</span>
+                      </div>
+                      <div style={{ padding: "8px 12px", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, cursor: "not-allowed", color: isDarkMode ? "#9ca3af" : "#6b7280", fontSize: 12, fontWeight: 500 }} title="Coming Soon">
+                        <span style={{ fontSize: 16, fontFamily: '"Segoe UI Emoji", "Apple Color Emoji", sans-serif' }}>📊</span> Spreadsheet <span style={{ marginLeft: "auto", fontSize: 10, background: isDarkMode ? "#374151" : "#e5e7eb", padding: "2px 6px", borderRadius: 4, opacity: 0.7 }}>Soon</span>
+                      </div>
+                      <div style={{ padding: "8px 12px", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, cursor: "not-allowed", color: isDarkMode ? "#9ca3af" : "#6b7280", fontSize: 12, fontWeight: 500 }} title="Coming Soon">
+                        <span style={{ fontSize: 16, fontFamily: '"Segoe UI Emoji", "Apple Color Emoji", sans-serif' }}>📝</span> Document <span style={{ marginLeft: "auto", fontSize: 10, background: isDarkMode ? "#374151" : "#e5e7eb", padding: "2px 6px", borderRadius: 4, opacity: 0.7 }}>Soon</span>
+                      </div>
+                      <div style={{ padding: "8px 12px", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, cursor: "not-allowed", color: isDarkMode ? "#9ca3af" : "#6b7280", fontSize: 12, fontWeight: 500 }} title="Coming Soon">
+                        <span style={{ fontSize: 16, fontFamily: '"Segoe UI Emoji", "Apple Color Emoji", sans-serif' }}>🗂️</span> Product Feed <span style={{ marginLeft: "auto", fontSize: 10, background: isDarkMode ? "#374151" : "#e5e7eb", padding: "2px 6px", borderRadius: 4, opacity: 0.7 }}>Soon</span>
+                      </div>
+                      <div style={{ padding: "8px 12px", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, cursor: "not-allowed", color: isDarkMode ? "#9ca3af" : "#6b7280", fontSize: 12, fontWeight: 500 }} title="Coming Soon">
+                        <span style={{ fontSize: 16, fontFamily: '"Segoe UI Emoji", "Apple Color Emoji", sans-serif' }}>🔗</span> URL <span style={{ marginLeft: "auto", fontSize: 10, background: isDarkMode ? "#374151" : "#e5e7eb", padding: "2px 6px", borderRadius: 4, opacity: 0.7 }}>Soon</span>
+                      </div>
+                    </div>
+                    </>
+                  )}
                   <textarea
                     id="chat-textarea"
                     name="chat-textarea"

@@ -9,7 +9,7 @@ export const initialState = {
   isLoadingAnalytics: false,
   buyerSearchQuery: "",
   buyerAiQuery: "",
-  buyerAiMessages: [{ role: "agent", text: "Hi! I'm SERA's AI Assistant. What are you looking for today?", action: "idle", hasAction: false }],
+  buyerAiMessages: [{ role: "agent", text: "What are you looking for today?", action: "idle", hasAction: false }],
   buyerAiStatus: "",
   selectedCategoryFilter: "all",
   followedStores: new Set(["urban-essentials"]),

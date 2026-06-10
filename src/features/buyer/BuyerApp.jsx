@@ -996,7 +996,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                     }
                   }
                 }}
-                placeholder="Ask SERA..."
+                placeholder="Search products, stores, or brands..."
                 style={{ background: "transparent", border: "none", outline: "none", color: t.text, fontSize: 13, flex: 1, resize: "none", height: 20, maxHeight: 120, fontFamily: "inherit", overflowY: "auto", padding: 0 }}
                 rows={1}
                 disabled={!!buyerAiStatus}

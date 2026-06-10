@@ -61,7 +61,7 @@ export const NAV_ICONS = [
 export const INITIAL_PRODUCTS = [];
 export const INITIAL_PHILOSOPHY = [];
 export const INIT_MESSAGES = [
-  { role: "agent", text: "Hello I'm SERA, ready when you are.", action: "idle", hasAction: false }
+  { role: "agent", text: "What would you like to build?", action: "idle", hasAction: false }
 ];
 export const CURATED_STORES = [];
 export const TRENDING_PRODUCTS = [];
