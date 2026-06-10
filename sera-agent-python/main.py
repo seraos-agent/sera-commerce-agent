@@ -249,11 +249,16 @@ async def chat_with_agent(request: ChatRequest):
         # Append recent history to input
         history_str = ""
         if request.history:
-            # take last 4 messages to avoid token bloat
-            recent = request.history[-4:]
+            # For buyer: last 3 messages (lighter context = faster response)
+            # For seller: last 4 messages (richer context needed for complex tasks)
+            max_history = 3 if request.chatMode == 'buyer' else 4
+            recent = request.history[-max_history:]
             for msg in recent:
                 role = "User" if msg.get("role") == "user" else "Agent"
                 text = msg.get("text", "")
+                # For buyer, also limit each message text to 300 chars
+                if request.chatMode == 'buyer':
+                    text = text[:300]
                 history_str += f"{role}: {text}\n"
         
         if history_str:

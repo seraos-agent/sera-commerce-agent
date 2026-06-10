@@ -24,11 +24,13 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
 
   const [chatOpen, setChatOpen] = useState(false);
   const [abortController, setAbortController] = useState(null);
+  const [streamingMessage, setStreamingMessage] = useState(null); // live streaming bubble
 
   const handleAbort = () => {
     if (abortController) {
       abortController.abort();
       setBuyerAiStatus("");
+      setStreamingMessage(null);
       setAbortController(null);
     }
   };
@@ -190,7 +192,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [buyerAiMessages, buyerAiStatus, chatOpen]);
+  }, [buyerAiMessages, buyerAiStatus, streamingMessage, chatOpen]);
 
   // Listen for "View Store" button clicks from SeraAgentMessage chat bubbles
   useEffect(() => {
@@ -289,7 +291,8 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
     const newMsgId = Date.now();
     setBuyerAiMessages(prev => [...prev, { role: "user", text: userText, id: `user-${newMsgId}` }]);
     setBuyerAiQuery("");
-    setBuyerAiStatus("Analyzing request...");
+    setBuyerAiStatus("Thinking...");
+    setStreamingMessage(null);
 
     const controller = new AbortController();
     setAbortController(controller);
@@ -310,6 +313,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let streamingText = "";
       while (true) {
         const { done, value } = await reader.read();
         if (value) {
@@ -322,24 +326,53 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
             try {
               const data = JSON.parse(line);
               if (data.type === "cognition" && data.message) {
-                setBuyerAiStatus(data.message);
-              } else if (data.type === "final") {
-                setBuyerAiMessages(prev => [...prev, { role: "agent", text: data.text, id: `agent-${newMsgId}` }]);
+                // Show tool/thinking status only if not yet streaming text
+                if (!streamingText) setBuyerAiStatus(data.message);
+              } else if (data.type === "agent_message_start" && data.text) {
+                // ✅ LIVE STREAMING: show text as it arrives
+                streamingText = data.text;
                 setBuyerAiStatus("");
+                setStreamingMessage({
+                  id: `streaming-${newMsgId}`,
+                  text: streamingText,
+                  isStreaming: true
+                });
+              } else if (data.type === "final") {
+                // Final complete message — replace streaming bubble
+                const finalText = data.text || streamingText;
+                setStreamingMessage(null);
+                setBuyerAiMessages(prev => [...prev, {
+                  role: "agent",
+                  text: finalText,
+                  id: `agent-${newMsgId}`
+                }]);
+                setBuyerAiStatus("");
+                streamingText = "";
               }
-            } catch (e) {
+            } catch {
               // Ignore invalid JSON chunks
             }
           }
         }
         if (done) break;
       }
+      // If stream ended but no final event (edge case), commit whatever we have
+      if (streamingText) {
+        setStreamingMessage(null);
+        setBuyerAiMessages(prev => [...prev, {
+          role: "agent",
+          text: streamingText,
+          id: `agent-${newMsgId}`
+        }]);
+      }
     } catch (err) {
       if (err.name === 'AbortError') {
-        console.log('Request aborted by user');
+        // If aborted mid-stream, keep partial text as committed message
+        setStreamingMessage(null);
         return;
       }
       console.error("Failed buyer AI assistant search:", err);
+      setStreamingMessage(null);
       setBuyerAiMessages(prev => [...prev, {
         role: "agent",
         text: `Sorry, there was an issue communicating with SERA AI. Please try again.`,
@@ -347,6 +380,7 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
       }]);
     } finally {
       setBuyerAiStatus("");
+      setStreamingMessage(null);
       setAbortController(null);
     }
   };
@@ -874,12 +908,12 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                 <div key={m.id} style={{ width: "100%", paddingLeft: 4 }}>
                   <SeraAgentMessage
                     message={{
-                      state: m.text?.trim() ? "complete" : (m.events?.length > 0 ? "executing" : "planning"),
-                      isStreaming: !m.text?.trim(),
-                      milestones: m.milestones || [],
-                      events: m.events || [],
-                      runtime: m.events || [],
-                      cognition: m.events || [],
+                      state: "complete",
+                      isStreaming: false,
+                      milestones: [],
+                      events: [],
+                      runtime: [],
+                      cognition: [],
                       content: m.text || "",
                       summary: null,
                       tools: [],
@@ -892,8 +926,30 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
               )
             ))}
 
-            {/* AI Live Status Chat Bubble */}
-            {buyerAiStatus && (
+            {/* ✅ LIVE STREAMING BUBBLE — shows text as it arrives token by token */}
+            {streamingMessage && (
+              <div style={{ width: "100%", paddingLeft: 4 }}>
+                <SeraAgentMessage
+                  message={{
+                    state: "executing",
+                    isStreaming: true,
+                    milestones: [],
+                    events: [],
+                    runtime: [],
+                    cognition: [],
+                    content: streamingMessage.text || "",
+                    summary: null,
+                    tools: [],
+                    actions: [],
+                    planData: null,
+                    chat: null,
+                  }}
+                />
+              </div>
+            )}
+
+            {/* AI Thinking Spinner — only shown before streaming text begins */}
+            {buyerAiStatus && !streamingMessage && (
               <div style={{ display: "flex", justifyContent: "flex-start" }}>
                 <div style={{
                   padding: "4px 8px",

@@ -42,7 +42,7 @@ async def get_store_analytics(store_id: str) -> dict:
     params = {"store_id": store_id}
     logger.info(f"📊 Calling Node.js GET /api/analytics with store_id={store_id}")
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             response = await client.get(url, params=params)
             response.raise_for_status()
             return response.json()
@@ -64,7 +64,7 @@ async def get_stores(session_id: str = "all") -> dict:
     params = {"session_id": actual_session}
     logger.info(f"🏬 Calling Node.js GET /api/stores with session_id={actual_session}")
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             response = await client.get(url, params=params)
             response.raise_for_status()
             data = response.json()
@@ -83,7 +83,7 @@ async def get_products(store_id: str) -> dict:
     params = {"store_id": store_id}
     
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             response = await client.get(url, params=params)
             response.raise_for_status()
             data = response.json()
@@ -118,6 +118,7 @@ async def search_products(query: str, store_id: str = None) -> dict:
 async def search_stores(query: str) -> dict:
     """
     Search for stores in the marketplace matching the given query (e.g. 'electronics', 'fashion').
+    Uses token-based scoring to find the best matches even with paraphrases or partial words.
     """
     logger.info(f"🏬 Searching stores for query='{query}'")
     try:
@@ -126,18 +127,32 @@ async def search_stores(query: str) -> dict:
             return stores_data
             
         stores = stores_data.get("stores", [])
-        query_lower = query.lower()
+        query_tokens = set(query.lower().split())
         
-        # Simple local filtering for demonstration
-        results = []
+        scored = []
         for s in stores:
-            name = s.get("name", "").lower()
-            desc = s.get("desc", "").lower()
-            cat = s.get("category", "").lower()
+            name = (s.get("store_name") or s.get("name") or "").lower()
+            desc = (s.get("description") or s.get("desc") or "").lower()
+            cat  = (s.get("category") or "").lower()
+            combined = f"{name} {desc} {cat}"
+            combined_tokens = set(combined.split())
             
-            if query_lower in name or query_lower in desc or query_lower in cat:
-                results.append(s)
-                
+            # Score: token overlap + substring partial match
+            overlap = len(query_tokens & combined_tokens)
+            partial = sum(1 for qt in query_tokens if any(qt in ct for ct in combined_tokens))
+            score = (overlap * 2) + partial
+            
+            if score > 0:
+                scored.append((score, s))
+        
+        # Sort by score descending
+        scored.sort(key=lambda x: x[0], reverse=True)
+        results = [s for _, s in scored]
+        
+        # Fallback: if no scored matches, return all stores
+        if not results:
+            results = stores
+            
         return {"success": True, "stores": results, "count": len(results)}
     except Exception as e:
         logger.error(f"Error in search_stores: {str(e)}")
