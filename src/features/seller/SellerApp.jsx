@@ -1118,6 +1118,8 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
     setBuildingStage(0); // Reset building stage
     setExecutionState(null);
     executionStateRef.current = null;
+    // ✅ Snapshot state BEFORE agent runs — used for accurate Undo/Reject
+    const prevSnapBeforeRun = { storeData: { ...storeData }, products: [...products], themeColor, heroBg };
     try {
       let storeContextToSend = {};
       if (appMode === "buyer") {
@@ -1152,7 +1154,6 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
         setIsTyping(false);
         const action = canonicalizeAgentAction(data.action || "idle");
         const params = normalizeAgentParams(action, data.params || {});
-        const prevSnap = { storeData, products, themeColor, heroBg };
         const ui = isStoreMutationAction(action, params);
         setMessages(prev => [...prev, {
           role: "agent",
@@ -1162,7 +1163,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
           hasAction: ui,
           status: ui ? "generating" : "done",
           actionState: ui ? "pending" : null,
-          prevState: ui ? prevSnap : null,
+          prevState: ui ? prevSnapBeforeRun : null,
         }]);
         if (ui) applyAction(action, params);
         return;
@@ -1363,7 +1364,8 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                     else if (msg.includes('generating') || msg.includes('assets') || msg.includes('image')) setBuildingStage(4);
                   }
                 }
-                await new Promise(r => setTimeout(r, 700));
+                // ✅ Reduced from 700ms → 80ms: was causing 3-4s cumulative delay per request
+                await new Promise(r => setTimeout(r, 80));
               } else if (data.type === "final") {
                 const currentMode = overrideMode || chatMode;
                 setAgentActivity(prev => {
@@ -1375,7 +1377,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                 const params = normalizeAgentParams(action, data.params || {});
                 const responseText = data.text || "Respons diterima.";
                 const isUIAction = isStoreMutationAction(action, params);
-                const prevSnap = { storeData, products, themeColor, heroBg };
+                // ✅ Use snapshot taken before agent ran — accurate pre-agent state
                 if (isUIAction) await new Promise(r => setTimeout(r, 400));
                 setIsTyping(false);
                 const isAgent = currentMode === 'agent';
@@ -1402,7 +1404,7 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                   hasAction: isUIAction,
                   status: isUIAction ? "generating" : "done",
                   actionState: isUIAction ? "pending" : null,
-                  prevState: isUIAction ? prevSnap : null,
+                  prevState: isUIAction ? prevSnapBeforeRun : null,
                 }]);
                 if (isUIAction) applyAction(action, params, prevSnap);
               }
@@ -1446,11 +1448,20 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
       return newMsg;
     });
     if (decision === "approve" && msg.action === "show_plan") {
+      // ✅ Save prevState before applying plan, so Undo works after Approve Plan
+      const prevSnap = msg.prevState || { storeData, products, themeColor, heroBg };
       if (msg.params?.schema) {
         applyAction("update_schema", msg.params);
       } else {
         applyAction("batch_create", msg.params);
       }
+      // Retroactively store prevState on the message so undo can use it
+      setMessages(prev => {
+        const updated = [...prev];
+        const m = updated[index];
+        m.prevState = prevSnap;
+        return updated;
+      });
       setDraftSchema(null);
     } else if (decision === "reject" || decision === "undo") {
       setDraftSchema(null);
@@ -2586,7 +2597,14 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                           // Landscape Preview
                           <div style={{ width: "100%", aspectRatio: "16/9", background: isDarkMode ? "#1a1a1e" : "#f3f4f6", borderRadius: 12, overflow: "hidden", position: "relative", border: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}` }}>
                             {storeData.storeVideo ? (
-                              <video src={storeData.storeVideo} autoPlay loop muted style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.9 }} />
+                              <video
+                                src={storeData.storeVideo}
+                                autoPlay loop muted
+                                playsInline
+                                preload="auto"
+                                onCanPlay={e => { e.currentTarget.style.opacity = '0.9'; }}
+                                style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0, transition: "opacity 0.4s ease" }}
+                              />
                             ) : (
                               <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: t.subtext }}>
                                 <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" style={{ marginBottom: 8 }}><rect x="2" y="6" width="20" height="12" rx="2" ry="2" /><path d="M10 10l5 2-5 2v-4z" /></svg>
@@ -2599,7 +2617,13 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                           <div style={{ height: 340, aspectRatio: "9/16", borderRadius: 16, overflow: "hidden", position: "relative", background: isDarkMode ? "#1a1a1e" : "#f3f4f6", cursor: "pointer", border: `1px solid ${isDarkMode ? "#2a2a2e" : "#e5e7eb"}` }}>
                             {storeData.promoVideo ? (
                               <>
-                                <video src={storeData.promoVideo} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                <video
+                                  src={storeData.promoVideo}
+                                  autoPlay loop muted playsInline
+                                  preload="auto"
+                                  onCanPlay={e => { e.currentTarget.style.opacity = '1'; }}
+                                  style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0, transition: "opacity 0.4s ease" }}
+                                />
                                 {/* Gradient overlay */}
                                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 45%)" }} />
                                 {/* LIVE badge */}
@@ -2688,7 +2712,12 @@ export const SellerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => 
                             <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8, minHeight: 70 }}>
                               {(storeData.storeVideos || (storeData.storeVideo ? [storeData.storeVideo] : [])).map((vid, idx) => (
                                 <div key={idx} style={{ position: "relative", width: 120, height: 68, borderRadius: 8, overflow: "hidden", border: storeData.storeVideo === vid ? `2px solid #c8b89a` : `1px solid ${t.border}`, flexShrink: 0, cursor: "pointer", background: "#000" }} onClick={() => setStoreData(p => ({ ...p, storeVideo: vid }))}>
-                                  <video src={vid} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 }} />
+                                  <video
+                                    src={vid}
+                                    preload="metadata"
+                                    onCanPlay={e => { e.currentTarget.style.opacity = '0.7'; }}
+                                    style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0, transition: "opacity 0.3s ease" }}
+                                  />
                                   <button onClick={(e) => { e.stopPropagation(); setStoreData(p => { const nv = (p.storeVideos || []).filter(v => v !== vid); return { ...p, storeVideos: nv, storeVideo: p.storeVideo === vid ? (nv[0] || "") : p.storeVideo }; }); }} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
                                 </div>
                               ))}

@@ -1,5 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Geist:wght@300;400;500&display=swap');
 
+/* ── Suppress Microsoft Edge Image Hover Menu (Visual Search) ── */
+img {
+  -ms-content-zooming: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* Prevent Edge hover overlay on image containers */
+[style*="objectFit"] img,
+.product-card img,
+img[style] {
+  pointer-events: none;
+}
+
+
 @keyframes autoScroll {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }

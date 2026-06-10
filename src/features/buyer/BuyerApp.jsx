@@ -649,7 +649,13 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                       e.stopPropagation();
                       window.dispatchEvent(new CustomEvent('sera:openStore', { detail: { storeId: camp.store.id || camp.store.store_id || camp.store._id } }));
                     }} style={{ cursor: "pointer", background: t.card, border: `1px solid ${t.border}`, borderRadius: 16, overflow: "hidden", position: "relative", aspectRatio: "9/16" }}>
-                      <video src={camp.videoUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <video
+                        src={camp.videoUrl}
+                        autoPlay loop muted playsInline
+                        preload="auto"
+                        onCanPlay={e => { e.currentTarget.style.opacity = '1'; }}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0, transition: "opacity 0.4s ease" }}
+                      />
                       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 40%)" }} />
                       <div style={{ position: "absolute", bottom: 20, left: 20, right: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
                         <div>
@@ -1093,7 +1099,13 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
                       <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
                         {[...new Set(sVids)].map((vidUrl, i) => (
                           <div key={i} style={{ maxWidth: 1100, margin: "0 auto", borderRadius: 24, overflow: "hidden", position: "relative", aspectRatio: "21/9", background: "#000", boxShadow: "0 24px 60px rgba(0,0,0,0.5)", width: "100%" }}>
-                            <video src={vidUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.8 }} />
+                            <video
+                              src={vidUrl}
+                              autoPlay loop muted playsInline
+                              preload="auto"
+                              onCanPlay={e => { e.currentTarget.style.opacity = '0.8'; }}
+                              style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0, transition: "opacity 0.5s ease" }}
+                            />
                             <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 60%)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "40px 60px" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
                                 <span style={{ background: "#ef4444", color: "#fff", fontSize: 11, fontWeight: 800, padding: "4px 12px", borderRadius: 100, textTransform: "uppercase", letterSpacing: 1 }}>Flash Sale</span>
@@ -1204,9 +1216,21 @@ export const BuyerApp = ({ isDarkMode, setIsDarkMode, t, DynamicRenderer }) => {
             {/* Left Image / Video */}
             <div style={{ width: window.innerWidth < 768 ? "100%" : "50%", background: "#1a1a1e", position: "relative", minHeight: 300 }}>
               {selectedProductDetail.verticalVideoUrl ? (
-                <video src={selectedProductDetail.verticalVideoUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <video
+                  src={selectedProductDetail.verticalVideoUrl}
+                  autoPlay loop muted playsInline
+                  preload="auto"
+                  onCanPlay={e => { e.currentTarget.style.opacity = '1'; }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0, transition: "opacity 0.4s ease" }}
+                />
               ) : selectedProductDetail.landscapeVideoUrl ? (
-                <video src={selectedProductDetail.landscapeVideoUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <video
+                  src={selectedProductDetail.landscapeVideoUrl}
+                  autoPlay loop muted playsInline
+                  preload="auto"
+                  onCanPlay={e => { e.currentTarget.style.opacity = '1'; }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0, transition: "opacity 0.4s ease" }}
+                />
               ) : (
                 <img src={selectedProductDetail.imageUrl} alt={selectedProductDetail.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               )}

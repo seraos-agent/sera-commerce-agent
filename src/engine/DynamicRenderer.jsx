@@ -48,7 +48,16 @@ export function DynamicRenderer({ layout, globalProps }) {
                   <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
                     {[...new Set(sVids)].map((vidUrl, i) => (
                       <div key={i} style={{ maxWidth: 1100, margin: "0 auto", borderRadius: 24, overflow: "hidden", position: "relative", aspectRatio: "21/9", background: globalProps.isDarkMode ? "#1a1a1e" : "#f3f4f6", border: `1px solid ${globalProps.isDarkMode ? "#2a2a2e" : "#e5e7eb"}`, width: "100%" }}>
-                        <video src={vidUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.8 }} />
+                        <video
+                          src={vidUrl}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          preload="auto"
+                          onCanPlay={e => { e.currentTarget.style.opacity = '0.8'; }}
+                          style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0, transition: "opacity 0.4s ease" }}
+                        />
                         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 60%)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "40px 60px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
                             <span style={{ background: "#ef4444", color: "#fff", fontSize: 11, fontWeight: 800, padding: "4px 12px", borderRadius: 100, textTransform: "uppercase", letterSpacing: 1 }}>Flash Sale</span>
@@ -93,7 +102,16 @@ export function DynamicRenderer({ layout, globalProps }) {
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 24 }}>
                       {pVids.map((vidUrl, i) => (
                         <div key={i} style={{ borderRadius: 16, overflow: "hidden", position: "relative", aspectRatio: "9/16", background: globalProps.isDarkMode ? "#1a1a1e" : "#f3f4f6", border: `1px solid ${globalProps.isDarkMode ? "#2a2a2e" : "#e5e7eb"}` }}>
-                          <video src={vidUrl} autoPlay loop muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <video
+                            src={vidUrl}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            preload="auto"
+                            onCanPlay={e => { e.currentTarget.style.opacity = '1'; }}
+                            style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0, transition: "opacity 0.4s ease" }}
+                          />
                           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 40%)" }} />
                           <div style={{ position: "absolute", bottom: 20, left: 20, right: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
                             <div>

@@ -350,13 +350,19 @@ async def chat_with_agent(request: ChatRequest):
                         pass # removed emit_post_tool and self_correction
 
         except Exception as e:
-            logger.error(f"Error during ADK run: {str(e)}")
+            err_msg = str(e)
+            logger.error(f"Error during ADK run: {err_msg}")
+            
+            friendly_text = "Oops! I encountered an unexpected error. Let's try again in a moment."
+            if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
+                friendly_text = "Whoops, I'm getting a little too much traffic right now! My systems are taking a quick breather. Please give me about 30 seconds and try asking again! 😅"
+                
             yield json.dumps({
                 "event_id": f"evt_err_{int(time.time())}",
                 "timestamp": int(time.time()),
                 "session_id": session_id,
                 "type": "agent_message_start",
-                "text": f"Runtime error: {str(e)[:200]}",
+                "text": friendly_text,
                 "ephemeral": False,
             }) + "\n"
             
