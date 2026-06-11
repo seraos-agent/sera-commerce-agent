@@ -349,7 +349,7 @@ YouTube Demo:
 ## Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/sera-commerce-agent.git
+git clone https://github.com/seraos-agent/sera-commerce-agent.git
 cd sera-commerce-agent
 ```
 
