@@ -312,27 +312,27 @@ Our long-term vision is to democratize commerce through autonomous AI.
 
 ### Seller Workspace
 
-![Seller Workspace](public/Screenshot%20Seller%20Workspace.png)
+![Seller Workspace](public/screenshot-seller-workspace.png)
 
 ### AI Store Creation
 
-![AI Store Creation](public/Screenshot%20AI%20Store%20Creation.png)
+![AI Store Creation](public/screenshot-ai-store-creation.png)
 
 ### Analytics Dashboard
 
-![Analytics Dashboard](public/Screenshot%20Analytics%20Dashboard.png)
+![Analytics Dashboard](public/screenshot-analytics-dashboard.png)
 
 ### Buyer Discovery Feed
 
-![Buyer Discovery Feed](public/Screenshot%20Buyer%20Discovery%20Feed.png)
+![Buyer Discovery Feed](public/screenshot-buyer-discovery-feed.png)
 
 ### Imagen 3 Content Generation
 
-![Imagen 3 Content Generation](public/Screenshot%20Imagen%203%20Content%20Generation.png)
+![Imagen 3 Content Generation](public/screenshot-imagen-3-content-generation.png)
 
 ### Veo Video Generation
 
-![Veo Video Generation](public/veo%20video%20landscap%20generation.png)
+![Veo Video Generation](public/veo-video-landscape-generation.png)
 
 ---
 
@@ -395,11 +395,11 @@ SERA is evolving toward a fully autonomous commerce operating system.
 Future capabilities include:
 
 * Autonomous marketing execution
-* Multi channel commerce automation
+* Multi-channel commerce automation
 * Marketplace integrations
 * Social commerce workflows
-* Advanced multi agent collaboration
-* AI powered business operations at scale
+* Advanced multi-agent collaboration
+* AI-powered business operations at scale
 
 ---
 
